@@ -32,6 +32,8 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import division
+
 
 __author__ = 'Antons Rebguns'
 __copyright__ = 'Copyright (c) 2010-2011 Antons Rebguns'
@@ -40,8 +42,6 @@ __license__ = 'BSD'
 __maintainer__ = 'Antons Rebguns'
 __email__ = 'anton@email.arizona.edu'
 
-
-from __future__ import division
 
 import roslib
 roslib.load_manifest('dynamixel_controllers')
