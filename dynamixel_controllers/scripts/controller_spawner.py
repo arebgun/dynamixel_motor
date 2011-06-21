@@ -43,6 +43,7 @@ __email__ = 'anton@email.arizona.edu'
 
 
 import sys
+import os
 from optparse import OptionParser
 
 import roslib
@@ -93,6 +94,7 @@ if __name__ == '__main__':
         try:
             controller = rospy.get_param(controller_name + '/controller')
             package_path = roslib.packages.get_pkg_dir(controller['package'])
+            package_path = os.path.join(package_path, 'src', controller['package'])
             module_name = controller['module']
             class_name = controller['type']
         except KeyError as ke:

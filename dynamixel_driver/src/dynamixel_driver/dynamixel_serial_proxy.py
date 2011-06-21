@@ -112,10 +112,10 @@ class SerialProxy():
             counts = {10: 0, 12: 0, 18: 0, 24: 0, 28: 0, 64: 0, 107: 0, 113: 0, 116: 0, 117: 0}
             
             for i in self.motors:
-                model_number = self.__serial_bus.get_servo_model_number(i)
+                model_number = self.__serial_bus.get_model_number(i)
                 counts[model_number] += 1
-                angles = self.__serial_bus.get_servo_min_max_angle_limits(i)
-                voltage = self.__serial_bus.get_servo_voltage(i)
+                angles = self.__serial_bus.get_angle_limits(i)
+                voltage = self.__serial_bus.get_voltage(i)
                 
                 rospy.set_param('dynamixel/%s/%d/model' %(self.port_namespace, i), DXL_MODEL_TO_NAME[model_number])
                 rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, i), model_number)
@@ -187,7 +187,7 @@ class SerialProxy():
             motor_states = []
             for i in self.motors:
                 try:
-                    state = self.__serial_bus.get_servo_feedback(i)
+                    state = self.__serial_bus.get_feedback(i)
                     if state:
                         motor_states.append(MotorState(**state))
                         if dynamixel_io.exception: raise dynamixel_io.exception
