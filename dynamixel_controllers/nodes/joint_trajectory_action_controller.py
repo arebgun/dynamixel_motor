@@ -124,7 +124,9 @@ class JointTrajectoryActionController():
         self.query_state_service = rospy.Service(self.controller_namespace + '/query_state', QueryTrajectoryState, self.process_query_state)
         self.action_server = actionlib.SimpleActionServer(self.controller_namespace + '/joint_trajectory_action',
                                                           JointTrajectoryAction,
-                                                          execute_cb=self.process_trajectory_action)
+                                                          execute_cb=self.process_trajectory_action,
+                                                          auto_start=False)
+        self.action_server.start()
 
     def process_command(self, msg):
         if self.action_server.is_active(): self.action_server.set_preempted()

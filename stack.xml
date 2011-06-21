@@ -12,5 +12,7 @@
 
     <depend stack="ros" />
     <depend stack="ros_comm" />
-    <depend stack="rospy" />
+    <depend stack="common" />
+    <depend stack="common_msgs" />
+    <depend stack="pr2_controllers" />
 </stack>

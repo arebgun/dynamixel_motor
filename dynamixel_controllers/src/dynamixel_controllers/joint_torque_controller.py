@@ -52,7 +52,7 @@ from dynamixel_driver.dynamixel_const import *
 from dynamixel_driver.dynamixel_ros_commands import *
 from dynamixel_controllers.joint_controller import JointController
 
-from ua_controller_msgs.msg import JointState
+from dynamixel_msgs.msg import JointState
 from std_msgs.msg import Float64
 
 class JointTorqueController(JointController):

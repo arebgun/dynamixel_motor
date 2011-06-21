@@ -8,12 +8,13 @@
         dynamixel_controllers and specific robot controllers use this
         package.
     </description>
-    <author>Antons Rebguns, Cody Jorgensen (UA Robotics Research Group)</author>
+    <author>Antons Rebguns, Cody Jorgensen</author>
     <license>BSD</license>
     <review status="unreviewed" notes=""/>
     <url>http://ros.org/wiki/dynamixel_driver</url>
     
     <depend package="rospy"/>
+    
     <rosdep name="pyserial"/>
 </package>
 

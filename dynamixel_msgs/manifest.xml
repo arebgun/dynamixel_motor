@@ -1,14 +1,13 @@
 <package>
-  <description brief="dynamixel_msgs">
-
-     dynamixel_msgs
-
-  </description>
-  <author>Arizona Robotics Research Group</author>
-  <license>BSD</license>
-  <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/dynamixel_msgs</url>
-
+    <description brief="Common messages for Dynamixel motors">
+        Common messages used throughout dynamixel_motor stack.
+    </description>
+    
+    <author>Antons Rebguns</author>
+    
+    <license>BSD</license>
+    <review status="unreviewed" notes=""/>
+    <url>http://ros.org/wiki/dynamixel_msgs</url>
 </package>
 
 

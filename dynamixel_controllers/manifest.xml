@@ -1,5 +1,5 @@
 <package>
-    <description brief="Python Dynamixel Controller Manager">
+    <description brief="Python Dynamixel Controller Manager and Joint Controllers">
         This package contains a configurable node, services and a spawner script
         to start, stop and restart one or more controller plugins. Reusable
         controller types are defined for common Dynamixel motor joints. Both speed and
@@ -8,19 +8,19 @@
         via a yaml file.
     </description>
 
-    <author>Maintained by Antons Rebguns</author>
+    <author>Antons Rebguns, Cody Jorgensen, Cara Slutter</author>
     <license>BSD</license>
     <review status="unreviewed" notes=""/>
     <url>http://ros.org/wiki/dynamixel_controllers</url>
 
     <depend package="rospy"/>
-    <depend package="std_msgs"/>
-    <depend package="dynamixel_driver"/>
-    <depend package="dynamixel_msgs"/>
-    
     <depend package="actionlib"/>
-    <depend package="pr2_controllers_msgs"/>
+    <depend package="dynamixel_driver"/>
+    
+    <depend package="std_msgs"/>
     <depend package="trajectory_msgs"/>
+    <depend package="dynamixel_msgs"/>
+    <depend package="pr2_controllers_msgs"/>
 </package>
 
 
