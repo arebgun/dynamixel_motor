@@ -1,0 +1,11 @@
+<!-- -*- mode: XML -*- -->
+
+<launch>
+    <!-- Start the low-level driver manager with parameters -->
+    <node name="ttyUSB0_manager" pkg="dynamixel_controllers" type="controller_manager.py" required="true" output="screen">
+        <param name="port_name" type="str" value="/dev/ttyUSB0"/>
+        <param name="baud_rate" type="int" value="1000000"/>
+        <param name="max_motor_id" type="int" value="25"/>
+        <param name="update_rate" type="int" value="10"/>
+    </node>
+</launch>

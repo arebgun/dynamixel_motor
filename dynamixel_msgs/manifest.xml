@@ -1,0 +1,14 @@
+<package>
+  <description brief="dynamixel_msgs">
+
+     dynamixel_msgs
+
+  </description>
+  <author>Arizona Robotics Research Group</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/dynamixel_msgs</url>
+
+</package>
+
+

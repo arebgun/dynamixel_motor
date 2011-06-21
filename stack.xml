@@ -1,0 +1,16 @@
+<stack>
+    <description brief="Robotis Dynamixel motor drivers and ROS controllers">
+        This stack contains packages that are used to interface with Robotis
+        Dynamixel line of servo motors. THis stack was tested with and fully
+        supports AX-12+, RX-28, RX-64 and EX-106+ motor models.
+    </description>
+
+    <author>Maintained by Antons Rebguns</author>
+    <license>BSD</license>  
+    <review status="unreviewed" notes=""/>
+    <url>http://ros.org/wiki/dynamixel_motor</url>
+
+    <depend stack="ros" />
+    <depend stack="ros_comm" />
+    <depend stack="rospy" />
+</stack>
