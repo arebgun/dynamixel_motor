@@ -109,7 +109,7 @@ class SerialProxy():
                 
             rospy.set_param('dynamixel/%s/connected_ids' % self.port_namespace, self.motors)
             
-            counts = {10: 0, 12: 0, 18: 0, 24: 0, 28: 0, 64: 0, 107: 0, 113: 0, 116: 0, 117: 0}
+            counts = {10: 0, 12: 0, 18: 0, 24: 0, 28: 0, 29: 0, 64: 0, 107: 0, 113: 0, 116: 0, 117: 0}
             
             for i in self.motors:
                 model_number = self.__serial_bus.get_model_number(i)
@@ -122,7 +122,20 @@ class SerialProxy():
                 rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, i), DXL_MODEL_TO_TORQUE[model_number])
                 rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, i), DXL_MODEL_TO_TORQUE[model_number] * voltage)
                 
-                if model_number == 107: # tested with EX-106+
+                # velocity related constants
+                rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, i), DXL_MODEL_TO_MAX_VELOCITY[model_number])
+                rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, i), DXL_MODEL_TO_MAX_VELOCITY[model_number] * voltage)
+                rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, i), DXL_MODEL_TO_MAX_VELOCITY[model_number] * voltage / 1024)
+                
+                if model_number == 29: # needs testing with MX-28
+                    rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, i), 4096)
+                    rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, i), 360.00)
+                    rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, i), 6.283185307)
+                    rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, i), 11.377777778)
+                    rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, i), 651.898646923)
+                    rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, i), 0.087890625)
+                    rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, i), 0.001533981)
+                else if model_number == 107: # tested with EX-106+
                     rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, i), 4096)
                     rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, i), 250.92)
                     rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, i), 4.379380160)

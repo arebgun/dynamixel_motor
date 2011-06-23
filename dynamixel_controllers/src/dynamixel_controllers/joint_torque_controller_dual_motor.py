@@ -82,24 +82,28 @@ class JointTorqueControllerDualMotor(JointController):
             rospy.logwarn('Specified ids: %d %d' % (self.master_id, self.slave_id))
             return False
             
-        self.radians_per_encoder_tick = rospy.get_param('dynamixel/%s/%d/radians_per_encoder_tick' % (self.port_namespace, self.master_id))
-        self.encoder_ticks_per_radian = rospy.get_param('dynamixel/%s/%d/encoder_ticks_per_radian' % (self.port_namespace, self.master_id))
+        self.RADIANS_PER_ENCODER_TICK = rospy.get_param('dynamixel/%s/%d/radians_per_encoder_tick' % (self.port_namespace, self.master_id))
+        self.ENCODER_TICKS_PER_RADIAN = rospy.get_param('dynamixel/%s/%d/encoder_ticks_per_radian' % (self.port_namespace, self.master_id))
         
         if self.flipped:
-            self.master_min_angle = (self.master_initial_position_raw - self.master_min_angle_raw) * self.radians_per_encoder_tick
-            self.master_max_angle = (self.master_initial_position_raw - self.master_max_angle_raw) * self.radians_per_encoder_tick
+            self.master_min_angle = (self.master_initial_position_raw - self.master_min_angle_raw) * self.RADIANS_PER_ENCODER_TICK
+            self.master_max_angle = (self.master_initial_position_raw - self.master_max_angle_raw) * self.RADIANS_PER_ENCODER_TICK
         else:
-            self.master_min_angle = (self.master_min_angle_raw - self.master_initial_position_raw) * self.radians_per_encoder_tick
-            self.master_max_angle = (self.master_max_angle_raw - self.master_initial_position_raw) * self.radians_per_encoder_tick
+            self.master_min_angle = (self.master_min_angle_raw - self.master_initial_position_raw) * self.RADIANS_PER_ENCODER_TICK
+            self.master_max_angle = (self.master_max_angle_raw - self.master_initial_position_raw) * self.RADIANS_PER_ENCODER_TICK
             
-        self.encoder_resolution = rospy.get_param('dynamixel/%s/%d/encoder_resolution' % (self.port_namespace, self.master_id))
-        self.max_position = self.encoder_resolution - 1
-        self.set_speed(0.0)
+        self.ENCODER_RESOLUTION = rospy.get_param('dynamixel/%s/%d/encoder_resolution' % (self.port_namespace, self.master_id))
+        self.MAX_POSITION = self.ENCODER_RESOLUTION - 1
+        self.VELOCITY_PER_TICK = rospy.get_param('dynamixel/%s/%d/radians_second_per_encoder_tick' % (self.port_namespace, self.master_id))
+        self.MAX_VELOCITY = rospy.get_param('dynamixel/%s/%d/max_velocity' % (self.port_namespace, self.master_id))
+        self.MIN_VELOCITY = self.VELOCITY_PER_TICK
         
         if self.compliance_slope is not None: self.set_compliance_slope(self.compliance_slope)
         if self.compliance_margin is not None: self.set_compliance_margin(self.compliance_margin)
         if self.compliance_punch is not None: self.set_compliance_punch(self.compliance_punch)
         if self.torque_limit is not None: self.set_torque_limit(self.torque_limit)
+        self.set_speed(0.0)
+        
         return True
 
 
@@ -110,10 +114,10 @@ class JointTorqueControllerDualMotor(JointController):
 
 
     def set_speed(self, speed):
-        if speed < DXL_MIN_SPEED_RAD: speed = DXL_MIN_SPEED_RAD
-        elif speed > DXL_MAX_SPEED_RAD: speed = DXL_MAX_SPEED_RAD
+        if speed < -self.joint_max_speed: speed = -self.joint_max_speed
+        elif speed > self.joint_max_speed: speed = self.joint_max_speed
         self.last_commanded_torque = speed
-        speed_raw = int(round(speed / DXL_SPEED_RAD_SEC_PER_TICK))
+        speed_raw = int(round(speed / self.VELOCITY_PER_TICK))
         mcv_master = (self.master_id, speed_raw if speed_raw > 0 else 1)
         mcv_slave = (self.slave_id, mcv_master[1])
         self.send_packet_callback((DXL_SET_GOAL_SPEED, [mcv_master, mcv_slave]))
@@ -167,9 +171,9 @@ class JointTorqueControllerDualMotor(JointController):
                 state = states[self.master_id]
                 self.joint_state.motor_temps = [state.temperature, states[self.slave_id].temperature]
                 self.joint_state.goal_pos = self.last_commanded_torque
-                self.joint_state.current_pos = self.raw_to_rad(state.position, self.master_initial_position_raw, self.flipped, self.radians_per_encoder_tick)
+                self.joint_state.current_pos = self.raw_to_rad(state.position, self.master_initial_position_raw, self.flipped, self.RADIANS_PER_ENCODER_TICK)
                 self.joint_state.error = 0.0
-                self.joint_state.velocity = (state.speed / DXL_MAX_SPEED_TICK) * DXL_MAX_SPEED_RAD
+                self.joint_state.velocity = (state.speed / DXL_MAX_SPEED_TICK) * self.MAX_VELOCITY
                 self.joint_state.load = state.load
                 self.joint_state.is_moving = state.moving
                 self.joint_state.header.stamp = rospy.Time.from_sec(state.timestamp)
