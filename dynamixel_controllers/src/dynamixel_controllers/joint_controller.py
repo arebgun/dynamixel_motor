@@ -68,7 +68,6 @@ class JointController:
         self.topic_name = param_path
         self.port_namespace = port_name[port_name.rfind('/') + 1:]
         self.joint_name = rospy.get_param(self.topic_name + '/joint_name')
-        self.joint_max_speed = rospy.get_param(self.topic_name + '/joint_max_speed', DXL_MAX_SPEED_RAD)
         self.joint_speed = rospy.get_param(self.topic_name + '/joint_speed', 1.0)
         self.compliance_slope = rospy.get_param(self.topic_name + '/joint_compliance_slope', None)
         self.compliance_margin = rospy.get_param(self.topic_name + '/joint_compliance_margin', None)
@@ -85,12 +84,6 @@ class JointController:
         self.torque_limit_service = rospy.Service(self.topic_name + '/set_torque_limit', SetTorqueLimit, self.process_set_torque_limit)
 
     def __ensure_limits(self):
-        if self.joint_max_speed < DXL_MIN_SPEED_RAD: self.joint_max_speed = DXL_MIN_SPEED_RAD
-        elif self.joint_max_speed > DXL_MAX_SPEED_RAD: self.joint_max_speed = DXL_MAX_SPEED_RAD
-        
-        if self.joint_speed < DXL_MIN_SPEED_RAD: self.joint_speed = DXL_MIN_SPEED_RAD
-        elif self.joint_speed > self.joint_max_speed: self.joint_speed = self.joint_max_speed
-        
         if self.compliance_slope is not None:
             if self.compliance_slope < DXL_MIN_COMPLIANCE_SLOPE: self.compliance_slope = DXL_MIN_COMPLIANCE_SLOPE
             elif self.compliance_slope > DXL_MAX_COMPLIANCE_SLOPE: self.compliance_slope = DXL_MAX_COMPLIANCE_SLOPE

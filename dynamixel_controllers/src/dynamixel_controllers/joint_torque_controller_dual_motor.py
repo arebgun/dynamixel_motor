@@ -102,6 +102,15 @@ class JointTorqueControllerDualMotor(JointController):
         if self.compliance_margin is not None: self.set_compliance_margin(self.compliance_margin)
         if self.compliance_punch is not None: self.set_compliance_punch(self.compliance_punch)
         if self.torque_limit is not None: self.set_torque_limit(self.torque_limit)
+        
+        self.joint_max_speed = rospy.get_param(self.topic_name + '/joint_max_speed', self.MAX_VELOCITY)
+        
+        if self.joint_max_speed < self.MIN_VELOCITY: self.joint_max_speed = self.MIN_VELOCITY
+        elif self.joint_max_speed > self.MAX_VELOCITY: self.joint_max_speed = self.MAX_VELOCITY
+        
+        if self.joint_speed < self.MIN_VELOCITY: self.joint_speed = self.MIN_VELOCITY
+        elif self.joint_speed > self.joint_max_speed: self.joint_speed = self.joint_max_speed
+        
         self.set_speed(0.0)
         
         return True

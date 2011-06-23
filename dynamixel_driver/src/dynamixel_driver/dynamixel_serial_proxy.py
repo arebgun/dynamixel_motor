@@ -55,6 +55,7 @@ import rospy
 import dynamixel_io
 from dynamixel_driver.dynamixel_const import DXL_MODEL_TO_NAME
 from dynamixel_driver.dynamixel_const import DXL_MODEL_TO_TORQUE
+from dynamixel_driver.dynamixel_const import DXL_MODEL_TO_MAX_VELOCITY
 
 from dynamixel_msgs.msg import MotorState
 from dynamixel_msgs.msg import MotorStateList
@@ -125,7 +126,7 @@ class SerialProxy():
                 # velocity related constants
                 rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, i), DXL_MODEL_TO_MAX_VELOCITY[model_number])
                 rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, i), DXL_MODEL_TO_MAX_VELOCITY[model_number] * voltage)
-                rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, i), DXL_MODEL_TO_MAX_VELOCITY[model_number] * voltage / 1024)
+                rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, i), DXL_MODEL_TO_MAX_VELOCITY[model_number] * voltage / 1023)
                 
                 if model_number == 29: # needs testing with MX-28
                     rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, i), 4096)
@@ -135,7 +136,7 @@ class SerialProxy():
                     rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, i), 651.898646923)
                     rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, i), 0.087890625)
                     rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, i), 0.001533981)
-                else if model_number == 107: # tested with EX-106+
+                elif model_number == 107: # tested with EX-106+
                     rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, i), 4096)
                     rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, i), 250.92)
                     rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, i), 4.379380160)

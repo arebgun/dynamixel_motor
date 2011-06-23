@@ -1,0 +1,14 @@
+<package>
+    <description brief="Example configuration and launch file for dynamixel_motor stack">
+        Example configuration and launch file for dynamixel_motor stack.
+    </description>
+    
+    <author>Antons Rebguns</author>
+    <license>BSD</license>
+    <review status="unreviewed" notes=""/>
+    <url>http://ros.org/wiki/dynamixel_tutorials</url>
+    
+    <depend package="dynamixel_controllers"/>
+</package>
+
+

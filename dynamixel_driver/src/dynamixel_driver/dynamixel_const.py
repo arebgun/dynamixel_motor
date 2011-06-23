@@ -153,7 +153,7 @@ DXL_MODEL_TO_NAME = \
 
 KGCM_TO_NM = 0.0980665                      # 1 kg-cm is that many N-m
 DXL_MAX_TORQUE_TICK = 1023                  # maximum torque in encoder units
-DXL_MODEL_TO_TORQUE = \                     # Holding torque in N-m per volt
+DXL_MODEL_TO_TORQUE = \
 {
     113: ( 10 * KGCM_TO_NM) / 12.0,         #  10 kg-cm @ 12V
     116: ( 21 * KGCM_TO_NM) / 12.0,         #  21 kg-cm @ 12V
@@ -166,11 +166,11 @@ DXL_MODEL_TO_TORQUE = \                     # Holding torque in N-m per volt
      64: ( 52 * KGCM_TO_NM) / 18.5,         #  52 kg-cm @ 18.5V
     107: (107 * KGCM_TO_NM) / 18.5,         # 107 kg-cm @ 18.5V
      29: ( 24 * KGCM_TO_NM) / 12.0,         #  24 kg-cm @ 12V
-}
+}                                           # holding torque in N-m per volt
 
 RPM_TO_RADSEC = 0.104719755                 # 1 RPM is that many rad/sec
 DXL_MAX_SPEED_TICK = 1023                   # maximum speed in encoder units
-DXL_MODEL_TO_MAX_VELOCITY = \               # maximum velocity rad/sec per volt
+DXL_MODEL_TO_MAX_VELOCITY = \
 {
     113: ( 54 * RPM_TO_RADSEC) / 12.0,      #  54 RPM @ 12V
     116: ( 78 * RPM_TO_RADSEC) / 12.0,      #  78 RPM @ 12V
@@ -183,5 +183,5 @@ DXL_MODEL_TO_MAX_VELOCITY = \               # maximum velocity rad/sec per volt
      64: ( 64 * RPM_TO_RADSEC) / 18.5,      #  64 RPM @ 18.5V
     107: ( 91 * RPM_TO_RADSEC) / 18.5,      #  91 RPM @ 18.5V
      29: ( 54 * RPM_TO_RADSEC) / 12.0,      #  85 RPM @ 18.5V
-}
+}                                           # maximum velocity rad/sec per volt
 
