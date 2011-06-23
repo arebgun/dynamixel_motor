@@ -50,8 +50,6 @@ roslib.load_manifest('dynamixel_controllers')
 import rospy
 import actionlib
 
-from dynamixel_driver.dynamixel_const import DXL_MIN_SPEED_RAD
-
 from std_msgs.msg import Float64
 from trajectory_msgs.msg import JointTrajectory
 from pr2_controllers_msgs.msg import JointTrajectoryControllerState
@@ -89,7 +87,7 @@ class JointTrajectoryActionController():
         self.stopped_velocity_tolerance = rospy.get_param(ns + '/stopped_velocity_tolerance', 0.01)
         self.goal_constraints = []
         self.trajectory_constraints = []
-        self.min_velocity = rospy.get_param(self.controller_namespace + '/joint_trajectory_action_node/min_velocity', DXL_MIN_SPEED_RAD)
+        self.min_velocity = rospy.get_param(self.controller_namespace + '/joint_trajectory_action_node/min_velocity', 0.1)
         
         for joint in self.joint_names:
             self.goal_constraints.append(rospy.get_param(ns + '/' + joint + '/goal', -1.0))
@@ -358,7 +356,7 @@ class JointTrajectoryActionController():
             command_resolution = 0.006
         elif command == 'velocity':
             current_state = self.joint_states[joint].velocity
-            command_resolution = DXL_MIN_SPEED_RAD
+            command_resolution = 0.05
         else:
             rospy.logerr('Unrecognized motor command %s while setting %s to %f', command, joint, value)
             return False
