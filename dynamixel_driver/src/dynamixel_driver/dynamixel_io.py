@@ -46,9 +46,9 @@ import time
 import serial
 from array import array
 from binascii import b2a_hex
+from threading import Lock
 
 from dynamixel_const import *
-from dynamixel_ros_commands import *
 
 exception = None
 
@@ -62,6 +62,7 @@ class DynamixelIO(object):
     def __init__(self, port, baudrate):
         """ Constructor takes serial port and baudrate as arguments. """
         try:
+            self.lok = Lock()
             self.ser = None
             self.ser = serial.Serial(port)
             self.ser.setTimeout(0.015)
@@ -81,6 +82,10 @@ class DynamixelIO(object):
             self.ser.flushInput()
             self.ser.flushOutput()
             self.ser.close()
+
+    def __write_serial(self, data):
+        with self.lok:
+            self.ser.write(data)
 
     def __read_response(self, servo_id):
         data = []
@@ -121,7 +126,7 @@ class DynamixelIO(object):
         # packet: FF  FF  ID LENGTH INSTRUCTION PARAM_1 ... CHECKSUM
         packet = [0xFF, 0xFF, servo_id, length, DXL_READ_DATA, address, size, checksum]
         packetStr = array('B', packet).tostring() # same as: packetStr = ''.join([chr(byte) for byte in packet])
-        self.ser.write(packetStr)
+        self.__write_serial(packetStr)
         
         # wait for response packet from the motor
         timestamp = time.time()
@@ -160,7 +165,7 @@ class DynamixelIO(object):
         packet.append(checksum)
         
         packetStr = array('B', packet).tostring() # packetStr = ''.join([chr(byte) for byte in packet])
-        self.ser.write(packetStr)
+        self.__write_serial(packetStr)
         
         # wait for response packet from the motor
         timestamp = time.time()
@@ -203,7 +208,7 @@ class DynamixelIO(object):
         packet.append(checksum)
         
         packetStr = array('B', packet).tostring() # packetStr = ''.join([chr(byte) for byte in packet])
-        self.ser.write(packetStr)
+        self.__write_serial(packetStr)
 
     def ping(self, servo_id):
         """ Ping the servo with "servo_id". This causes the servo to return a
@@ -223,7 +228,7 @@ class DynamixelIO(object):
         # packet: FF  FF  ID LENGTH INSTRUCTION CHECKSUM
         packet = [0xFF, 0xFF, servo_id, length, DXL_PING, checksum]
         packetStr = array('B', packet).tostring()
-        self.ser.write(packetStr)
+        self.__write_serial(packetStr)
         
         # wait for response packet from the motor
         timestamp = time.time()
@@ -243,57 +248,6 @@ class DynamixelIO(object):
     def test_bit(self, number, offset):
         mask = 1 << offset
         return (number & mask)
-
-    def write_packet(self, packet):
-        command = packet[0]
-        
-        register = 0
-        values = []
-        two_byte_cmd = False
-        
-        if command == DXL_SET_TORQUE_ENABLE:
-            register = DXL_TORQUE_ENABLE
-        elif command == DXL_SET_CW_COMPLIANCE_MARGIN:
-            register = DXL_CW_COMPLIANCE_MARGIN
-        elif command == DXL_SET_CCW_COMPLIANCE_MARGIN:
-            register = DXL_CCW_COMPLIANCE_MARGIN
-        elif command == DXL_SET_COMPLIANCE_MARGINS:
-            two_byte_cmd = True
-            register = DXL_CW_COMPLIANCE_MARGIN
-        elif command == DXL_SET_CW_COMPLIANCE_SLOPE:
-            register = DXL_CW_COMPLIANCE_SLOPE
-        elif command == DXL_SET_CCW_COMPLIANCE_SLOPE:
-            register = DXL_CCW_COMPLIANCE_SLOPE
-        elif command == DXL_SET_COMPLIANCE_SLOPES:
-            two_byte_cmd = True
-            register = DXL_CW_COMPLIANCE_SLOPE
-        elif command == DXL_SET_GOAL_POSITION:
-            two_byte_cmd = True
-            register = DXL_GOAL_POSITION_L
-        elif command == DXL_SET_GOAL_SPEED:
-            two_byte_cmd = True
-            register = DXL_GOAL_SPEED_L
-        elif command == DXL_SET_TORQUE_LIMIT:
-            two_byte_cmd = True
-            register = DXL_TORQUE_LIMIT_L
-        elif command == DXL_SET_PUNCH:
-            two_byte_cmd = True
-            register = DXL_PUNCH_L
-            
-        for val in packet[1]:
-            motor_id = val[0]
-            value = val[1]
-            if two_byte_cmd:
-                if value >= 0:
-                    loByte = int(value % 256)
-                    hiByte = int(value >> 8)
-                else:
-                    loByte = int((1023 - value) % 256)
-                    hiByte = int((1023 - value) >> 8)
-                values.append((motor_id, loByte, hiByte))
-            else:
-                values.append((motor_id, value))
-        self.sync_write(register, tuple(values))
 
 
     ######################################################################
@@ -579,13 +533,111 @@ class DynamixelIO(object):
 
     #################################################################
     # These functions can send multiple commands to multiple servos #
+    # These commands are used in ROS wrapper as they don't send a   #
+    # response packet, ROS wrapper gets motor states at a set rate  #
     #################################################################
 
-    def set_multi_servo_speeds(self, valueTuples):
+    def set_multi_torque_enabled(self, valueTuples):
+        """
+        Method to set multiple servos torque enabled.
+        Should be called as such:
+        set_multi_servos_to_torque_enabled( (id1, True), (id2, True), (id3, True) )
+        """
+        # use sync write to broadcast multi servo message
+        self.sync_write(DXL_TORQUE_ENABLE, tuple(valueTuples))
+
+    def set_multi_compliance_margin_cw(self, valueTuples):
+        """
+        Set different CW compliance margin for multiple servos.
+        Should be called as such:
+        set_multi_compliance_margin_cw( ( (id1, margin1), (id2, margin2), (id3, margin3) ) )
+        """
+        self.sync_write(DXL_CW_COMPLIANCE_MARGIN, tuple(valueTuples))
+
+    def set_multi_compliance_margin_ccw(self, valueTuples):
+        """
+        Set different CCW compliance margin for multiple servos.
+        Should be called as such:
+        set_multi_compliance_margin_ccw( ( (id1, margin1), (id2, margin2), (id3, margin3) ) )
+        """
+        self.sync_write(DXL_CCW_COMPLIANCE_MARGIN, tuple(valueTuples))
+
+    def set_multi_compliance_margins(self, valueTuples):
+        """
+        Set different CW and CCW compliance margins for multiple servos.
+        Should be called as such:
+        set_multi_compliance_margins( ( (id1, cw_margin1, ccw_margin1), (id2, cw_margin2, ccw_margin2) ) )
+        """
+        self.sync_write(DXL_CW_COMPLIANCE_MARGIN, tuple(valueTuples))
+
+    def set_multi_compliance_slope_cw(self, valueTuples):
+        """
+        Set different CW compliance slope for multiple servos.
+        Should be called as such:
+        set_multi_compliance_slope_cw( ( (id1, slope1), (id2, slope2), (id3, slope3) ) )
+        """
+        self.sync_write(DXL_CW_COMPLIANCE_SLOPE, tuple(valueTuples))
+
+    def set_multi_compliance_slope_ccw(self, valueTuples):
+        """
+        Set different CCW compliance slope for multiple servos.
+        Should be called as such:
+        set_multi_compliance_slope_ccw( ( (id1, slope1), (id2, slope2), (id3, slope3) ) )
+        """
+        self.sync_write(DXL_CCW_COMPLIANCE_SLOPE, tuple(valueTuples))
+
+    def set_multi_compliance_slopes(self, valueTuples):
+        """
+        Set different CW and CCW compliance slopes for multiple servos.
+        Should be called as such:
+        set_multi_compliance_slopes( ( (id1, cw_slope1, ccw_slope1), (id2, cw_slope2, ccw_slope2) ) )
+        """
+        self.sync_write(DXL_CW_COMPLIANCE_SLOPE, tuple(valueTuples))
+
+    def set_multi_punch(self, valueTuples):
+        """
+        Set different punch values for multiple servos.
+        NOTE: according to documentation, currently this value is not being used.
+        Should be called as such:
+        set_multi_speed( ( (id1, punch1), (id2, punch2), (id3, punch3) ) )
+        """
+        # prepare value tuples for call to syncwrite
+        writeableVals = []
+        
+        for sid,punch in valueTuples:
+            # split punch into 2 bytes
+            loVal = int(punch % 256)
+            hiVal = int(punch >> 8)
+            writeableVals.append( (sid, loVal, hiVal) )
+            
+        # use sync write to broadcast multi servo message
+        self.sync_write(DXL_PUNCH_L, writeableVals)
+
+    def set_multi_position(self, valueTuples):
+        """
+        Set different positions for multiple servos.
+        Should be called as such:
+        set_multi_servo_positions( ( (id1, position1), (id2, position2), (id3, position3) ) )
+        """
+        # prepare value tuples for call to syncwrite
+        writeableVals = []
+        
+        for vals in valueTuples:
+            sid = vals[0]
+            position = vals[1]
+            # split position into 2 bytes
+            loVal = int(position % 256)
+            hiVal = int(position >> 8)
+            writeableVals.append( (sid, loVal, hiVal) )
+            
+        # use sync write to broadcast multi servo message
+        self.sync_write(DXL_GOAL_POSITION_L, writeableVals)
+
+    def set_multi_speed(self, valueTuples):
         """
         Set different speeds for multiple servos.
         Should be called as such:
-        set_multi_servo_speeds( ( (id1, speed1), (id2, speed2), (id3, speed3) ) )
+        set_multi_speed( ( (id1, speed1), (id2, speed2), (id3, speed3) ) )
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []
@@ -605,29 +657,27 @@ class DynamixelIO(object):
             writeableVals.append( (sid, loVal, hiVal) )
             
         # use sync write to broadcast multi servo message
-        self.sync_write(DXL_GOAL_SPEED_L, tuple(writeableVals))
+        self.sync_write(DXL_GOAL_SPEED_L, writeableVals)
 
-    def set_multi_servo_positions(self, valueTuples):
+    def set_multi_torque_limit(self, valueTuples):
         """
-        Set different positions for multiple servos.
+        Set different torque limits for multiple servos.
         Should be called as such:
-        set_multi_servo_positions( ( (id1, position1), (id2, position2), (id3, position3) ) )
+        set_multi_speed( ( (id1, torque1), (id2, torque2), (id3, torque3) ) )
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []
         
-        for vals in valueTuples:
-            sid = vals[0]
-            position = vals[1]
-            # split position into 2 bytes
-            loVal = int(position % 256)
-            hiVal = int(position >> 8)
+        for sid,torque in valueTuples:
+            # split torque into 2 bytes
+            loVal = int(torque % 256)
+            hiVal = int(torque >> 8)
             writeableVals.append( (sid, loVal, hiVal) )
             
         # use sync write to broadcast multi servo message
-        self.sync_write(DXL_GOAL_POSITION_L, tuple(writeableVals))
+        self.sync_write(DXL_TORQUE_LIMIT_L, writeableVals)
 
-    def set_multi_servo_positions_and_speeds(self, valueTuples):
+    def set_multi_position_and_speed(self, valueTuples):
         """
         Set different positions and speeds for multiple servos.
         Should be called as such:
@@ -656,18 +706,6 @@ class DynamixelIO(object):
             
         # use sync write to broadcast multi servo message
         self.sync_write(DXL_GOAL_POSITION_L, tuple(writeableVals))
-
-    def set_multi_servos_to_torque_enabled(self, servo_ids, enabled):
-        """
-        Method to set multiple servos torque enabled.
-        Should be called as such:
-        set_multi_servos_to_torque_enabled( (id1, id2, id3), True)
-        """
-        # prepare value tuples for call to syncwrite
-        writeableVals = [(sid, enabled) for sid in servo_ids]
-        
-        # use sync write to broadcast multi servo message
-        self.sync_write(DXL_TORQUE_ENABLE, tuple(writeableVals))
 
 
     #################################

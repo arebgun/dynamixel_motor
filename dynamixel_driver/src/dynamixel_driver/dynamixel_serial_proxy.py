@@ -44,7 +44,6 @@ __email__ = 'anton@email.arizona.edu'
 
 import sys
 import errno
-from threading import Lock
 from threading import Thread
 from Queue import Queue
 
@@ -53,9 +52,8 @@ roslib.load_manifest('dynamixel_driver')
 
 import rospy
 import dynamixel_io
-from dynamixel_driver.dynamixel_const import DXL_MODEL_TO_NAME
-from dynamixel_driver.dynamixel_const import DXL_MODEL_TO_TORQUE
-from dynamixel_driver.dynamixel_const import DXL_MODEL_TO_MAX_VELOCITY
+from dynamixel_driver.dynamixel_const import *
+from dynamixel_driver.dynamixel_ros_commands import *
 
 from dynamixel_msgs.msg import MotorState
 from dynamixel_msgs.msg import MotorStateList
@@ -70,7 +68,6 @@ class SerialProxy():
         self.update_rate = update_rate
         
         self.__packet_queue = Queue()
-        self.__state_lock = Lock()
         
         self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList)
 
@@ -173,30 +170,48 @@ class SerialProxy():
         except dynamixel_io.DroppedPacketError, dpe:
             rospy.loginfo(dpe.message)
 
+    def __send_packet(self, packet):
+        command = packet[0]
+        id_value_pairs = packet[1]
+        
+        if command == DXL_SET_TORQUE_ENABLE:
+            self.__serial_bus.set_multi_torque_enabled(id_value_pairs)
+            
+        elif command == DXL_SET_CW_COMPLIANCE_MARGIN:
+            self.__serial_bus.set_multi_compliance_margin_cw(id_value_pairs)
+        elif command == DXL_SET_CCW_COMPLIANCE_MARGIN:
+            self.__serial_bus.set_multi_compliance_margin_ccw(id_value_pairs)
+        elif command == DXL_SET_COMPLIANCE_MARGINS:
+            self.__serial_bus.set_multi_compliance_margins(id_value_pairs)
+            
+        elif command == DXL_SET_CW_COMPLIANCE_SLOPE:
+            self.__serial_bus.set_multi_compliance_slope_cw(id_value_pairs)
+        elif command == DXL_SET_CCW_COMPLIANCE_SLOPE:
+            self.__serial_bus.set_multi_compliance_slope_ccw(id_value_pairs)
+        elif command == DXL_SET_COMPLIANCE_SLOPES:
+            self.__serial_bus.set_multi_compliance_slopes(id_value_pairs)
+            
+        elif command == DXL_SET_PUNCH:
+            self.__serial_bus.set_multi_punch(id_value_pairs)
+            
+        elif command == DXL_SET_GOAL_POSITION:
+            self.__serial_bus.set_multi_position(id_value_pairs)
+        elif command == DXL_SET_GOAL_SPEED:
+            self.__serial_bus.set_multi_speed(id_value_pairs)
+            
+        elif command == DXL_SET_TORQUE_LIMIT:
+            self.__serial_bus.set_multi_torque_limit(id_value_pairs)
+
     def __process_packet_queue(self):
         while self.running:
             # block until new packet is available
             packet = self.__packet_queue.get(True)
             if packet == 'shutdown': return
-            self.__state_lock.acquire()
-            try:
-                self.__serial_bus.write_packet(packet)
-            except dynamixel_io.FatalErrorCodeError, fece:
-                rospy.logfatal(fece)
-                signal_shutdown(fece)
-            except dynamixel_io.NonfatalErrorCodeError, nfece:
-                rospy.logdebug(nfece)
-            except dynamixel_io.ChecksumError, cse:
-                rospy.logdebug(cse)
-            except dynamixel_io.DroppedPacketError, dpe:
-                rospy.logdebug(dpe.message)
-            finally:
-                self.__state_lock.release()
+            self.__send_packet(packet)
 
     def __update_motor_states(self):
         rate = rospy.Rate(self.update_rate)
         while self.running:
-            self.__state_lock.acquire()
             # get current state of all motors and publish to motor_states topic
             motor_states = []
             for i in self.motors:
@@ -218,8 +233,7 @@ class SerialProxy():
                     if ose.errno != errno.EAGAIN:
                         rospy.logfatal(errno.errorcode[ose.errno])
                         rospy.signal_shutdown(errno.errorcode[ose.errno])
-            self.__state_lock.release()
-            
+                        
             if motor_states:
                 msl = MotorStateList()
                 msl.motor_states = motor_states

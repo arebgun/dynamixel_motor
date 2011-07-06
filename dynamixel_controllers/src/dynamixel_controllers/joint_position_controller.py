@@ -124,16 +124,14 @@ class JointPositionController(JointController):
     def set_compliance_slope(self, slope):
         if slope < DXL_MIN_COMPLIANCE_SLOPE: slope = DXL_MIN_COMPLIANCE_SLOPE
         elif slope > DXL_MAX_COMPLIANCE_SLOPE: slope = DXL_MAX_COMPLIANCE_SLOPE
-        slope2 = (slope << 8) + slope
-        mcv = (self.motor_id, slope2)
+        mcv = (self.motor_id, slope)
         self.send_packet_callback((DXL_SET_COMPLIANCE_SLOPES, [mcv]))
 
     def set_compliance_margin(self, margin):
         if margin < DXL_MIN_COMPLIANCE_MARGIN: margin = DXL_MIN_COMPLIANCE_MARGIN
         elif margin > DXL_MAX_COMPLIANCE_MARGIN: margin = DXL_MAX_COMPLIANCE_MARGIN
         else: margin = int(margin)
-        margin2 = (margin << 8) + margin    # pack margin_cw and margin_ccw into 2 bytes
-        mcv = (self.motor_id, margin2)
+        mcv = (self.motor_id, margin)
         self.send_packet_callback((DXL_SET_COMPLIANCE_MARGINS, [mcv]))
 
     def set_compliance_punch(self, punch):
