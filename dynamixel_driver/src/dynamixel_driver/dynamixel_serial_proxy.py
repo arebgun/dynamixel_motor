@@ -42,10 +42,10 @@ __maintainer__ = 'Antons Rebguns'
 __email__ = 'anton@email.arizona.edu'
 
 
+import math
 import sys
 import errno
 from threading import Thread
-from Queue import Queue
 
 import roslib
 roslib.load_manifest('dynamixel_driver')
@@ -53,7 +53,6 @@ roslib.load_manifest('dynamixel_driver')
 import rospy
 import dynamixel_io
 from dynamixel_driver.dynamixel_const import *
-from dynamixel_driver.dynamixel_ros_commands import *
 
 from dynamixel_msgs.msg import MotorState
 from dynamixel_msgs.msg import MotorStateList
@@ -67,37 +66,63 @@ class SerialProxy():
         self.max_motor_id = max_motor_id
         self.update_rate = update_rate
         
-        self.__packet_queue = Queue()
-        
         self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList)
 
     def connect(self):
         try:
-            self.__serial_bus = dynamixel_io.DynamixelIO(self.port_name, self.baud_rate)
+            self.dxl_io = dynamixel_io.DynamixelIO(self.port_name, self.baud_rate)
             self.__find_motors()
         except dynamixel_io.SerialOpenError, e:
             rospy.logfatal(e.message)
             sys.exit(1)
             
         self.running = True
-        Thread(target=self.__process_packet_queue).start()
         if self.update_rate > 0: Thread(target=self.__update_motor_states).start()
 
     def disconnect(self):
         self.running = False
-        self.queue_new_packet('shutdown')
 
-    def queue_new_packet(self, packet):
-        self.__packet_queue.put_nowait(packet)
+    def __fill_motor_parameters(self, motor_id, model_number):
+        """
+        Stores some extra information about each motor on the parameter server.
+        Some of these paramters are used in joint controller implementation.
+        """
+        angles = self.dxl_io.get_angle_limits(motor_id)
+        voltage = self.dxl_io.get_voltage(motor_id)
+        
+        rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
+        rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
+        rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
+        rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, motor_id), angles['max'])
+        
+        torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
+        rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
+        rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)
+        
+        velocity_per_volt = DXL_MODEL_TO_PARAMS[model_number]['velocity_per_volt']
+        rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, motor_id), velocity_per_volt)
+        rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, motor_id), velocity_per_volt * voltage)
+        rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), velocity_per_volt * voltage / DXL_MAX_SPEED_TICK)
+        
+        encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
+        range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
+        range_radians = math.radians(range_degrees)
+        rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, motor_id), encoder_resolution)
+        rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, motor_id), range_degrees)
+        rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, motor_id), range_radians)
+        rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, motor_id), encoder_resolution / range_degrees)
+        rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
+        rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
+        rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
 
     def __find_motors(self):
         rospy.loginfo('Pinging motor IDs %d through %d...' % (self.min_motor_id, self.max_motor_id))
         self.motors = []
         
         try:
-            for i in xrange(self.min_motor_id, self.max_motor_id + 1):
-                result = self.__serial_bus.ping(i)
-                if result: self.motors.append(i)
+            for motor_id in range(self.min_motor_id, self.max_motor_id + 1):
+                result = self.dxl_io.ping(motor_id)
+                if result: self.motors.append(motor_id)
                 
             if self.motors:
                 rospy.loginfo('Found motors with IDs: %s.' % str(self.motors))
@@ -109,54 +134,14 @@ class SerialProxy():
             
             counts = {10: 0, 12: 0, 18: 0, 24: 0, 28: 0, 29: 0, 64: 0, 107: 0, 113: 0, 116: 0, 117: 0}
             
-            for i in self.motors:
-                model_number = self.__serial_bus.get_model_number(i)
+            for motor_id in self.motors:
+                model_number = self.dxl_io.get_model_number(motor_id)
                 counts[model_number] += 1
-                angles = self.__serial_bus.get_angle_limits(i)
-                voltage = self.__serial_bus.get_voltage(i)
-                
-                rospy.set_param('dynamixel/%s/%d/model' %(self.port_namespace, i), DXL_MODEL_TO_NAME[model_number])
-                rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, i), model_number)
-                rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, i), DXL_MODEL_TO_TORQUE[model_number])
-                rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, i), DXL_MODEL_TO_TORQUE[model_number] * voltage)
-                
-                # velocity related constants
-                rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, i), DXL_MODEL_TO_MAX_VELOCITY[model_number])
-                rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, i), DXL_MODEL_TO_MAX_VELOCITY[model_number] * voltage)
-                rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, i), DXL_MODEL_TO_MAX_VELOCITY[model_number] * voltage / 1023)
-                
-                if model_number == 29: # needs testing with MX-28
-                    rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, i), 4096)
-                    rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, i), 360.00)
-                    rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, i), 6.283185307)
-                    rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, i), 11.377777778)
-                    rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, i), 651.898646923)
-                    rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, i), 0.087890625)
-                    rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, i), 0.001533981)
-                elif model_number == 107: # tested with EX-106+
-                    rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, i), 4096)
-                    rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, i), 250.92)
-                    rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, i), 4.379380160)
-                    rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, i), 16.323927945)
-                    rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, i), 935.292176142)
-                    rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, i), 0.061259766)
-                    rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, i), 0.001069185)
-                else: # tested with AX-12+, RX-28, RX-64
-                    rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, i), 1024)
-                    rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, i), 300.00)
-                    rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, i), 5.235987757)
-                    rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, i), 3.413333333)
-                    rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, i), 195.569594071)
-                    rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, i), 0.292968750)
-                    rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, i), 0.005113269)
-                    
-                rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, i), model_number)
-                rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, i), angles['min'])
-                rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, i), angles['max'])
+                self.__fill_motor_parameters(motor_id, model_number)
                 
             status_str = 'There are '
-            for (k, v) in counts.items():
-                if v: status_str += '%d %s, ' % (v, DXL_MODEL_TO_NAME[k])
+            for model_number,count in counts.items():
+                if count: status_str += '%d %s, ' % (count, DXL_MODEL_TO_PARAMS[model_number]['name'])
                 
             rospy.loginfo('%s servos connected' % status_str[:-2])
             rospy.loginfo('Dynamixel Manager on port %s initialized' % self.port_name)
@@ -170,53 +155,14 @@ class SerialProxy():
         except dynamixel_io.DroppedPacketError, dpe:
             rospy.loginfo(dpe.message)
 
-    def __send_packet(self, packet):
-        command = packet[0]
-        id_value_pairs = packet[1]
-        
-        if command == DXL_SET_TORQUE_ENABLE:
-            self.__serial_bus.set_multi_torque_enabled(id_value_pairs)
-            
-        elif command == DXL_SET_CW_COMPLIANCE_MARGIN:
-            self.__serial_bus.set_multi_compliance_margin_cw(id_value_pairs)
-        elif command == DXL_SET_CCW_COMPLIANCE_MARGIN:
-            self.__serial_bus.set_multi_compliance_margin_ccw(id_value_pairs)
-        elif command == DXL_SET_COMPLIANCE_MARGINS:
-            self.__serial_bus.set_multi_compliance_margins(id_value_pairs)
-            
-        elif command == DXL_SET_CW_COMPLIANCE_SLOPE:
-            self.__serial_bus.set_multi_compliance_slope_cw(id_value_pairs)
-        elif command == DXL_SET_CCW_COMPLIANCE_SLOPE:
-            self.__serial_bus.set_multi_compliance_slope_ccw(id_value_pairs)
-        elif command == DXL_SET_COMPLIANCE_SLOPES:
-            self.__serial_bus.set_multi_compliance_slopes(id_value_pairs)
-            
-        elif command == DXL_SET_PUNCH:
-            self.__serial_bus.set_multi_punch(id_value_pairs)
-            
-        elif command == DXL_SET_GOAL_POSITION:
-            self.__serial_bus.set_multi_position(id_value_pairs)
-        elif command == DXL_SET_GOAL_SPEED:
-            self.__serial_bus.set_multi_speed(id_value_pairs)
-            
-        elif command == DXL_SET_TORQUE_LIMIT:
-            self.__serial_bus.set_multi_torque_limit(id_value_pairs)
-
-    def __process_packet_queue(self):
-        while self.running:
-            # block until new packet is available
-            packet = self.__packet_queue.get(True)
-            if packet == 'shutdown': return
-            self.__send_packet(packet)
-
     def __update_motor_states(self):
         rate = rospy.Rate(self.update_rate)
         while self.running:
             # get current state of all motors and publish to motor_states topic
             motor_states = []
-            for i in self.motors:
+            for motor_id in self.motors:
                 try:
-                    state = self.__serial_bus.get_feedback(i)
+                    state = self.dxl_io.get_feedback(motor_id)
                     if state:
                         motor_states.append(MotorState(**state))
                         if dynamixel_io.exception: raise dynamixel_io.exception
