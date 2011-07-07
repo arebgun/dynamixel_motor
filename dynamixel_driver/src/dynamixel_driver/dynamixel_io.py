@@ -62,7 +62,7 @@ class DynamixelIO(object):
     def __init__(self, port, baudrate):
         """ Constructor takes serial port and baudrate as arguments. """
         try:
-            self.lok = Lock()
+            self.serial_mutex = Lock()
             self.ser = None
             self.ser = serial.Serial(port)
             self.ser.setTimeout(0.015)
@@ -84,8 +84,9 @@ class DynamixelIO(object):
             self.ser.close()
 
     def __write_serial(self, data):
-        with self.lok:
-            self.ser.write(data)
+        self.ser.flushInput()
+        self.ser.flushOutput()
+        self.ser.write(data)
 
     def __read_response(self, servo_id):
         data = []
@@ -113,8 +114,6 @@ class DynamixelIO(object):
         like:
             read(1, DXL_GOAL_POSITION_L, 2)
         """
-        self.ser.flushInput()
-        
         # Number of bytes following standard header (0xFF, 0xFF, id, length)
         length = 4  # instruction, address, size, checksum
         
@@ -126,16 +125,18 @@ class DynamixelIO(object):
         # packet: FF  FF  ID LENGTH INSTRUCTION PARAM_1 ... CHECKSUM
         packet = [0xFF, 0xFF, servo_id, length, DXL_READ_DATA, address, size, checksum]
         packetStr = array('B', packet).tostring() # same as: packetStr = ''.join([chr(byte) for byte in packet])
-        self.__write_serial(packetStr)
         
-        # wait for response packet from the motor
-        timestamp = time.time()
-        time.sleep(0.0013)#0.00235)
-        
-        # read response
-        data = self.__read_response(servo_id)
-        data.append(timestamp)
-        
+        with self.serial_mutex:
+            self.__write_serial(packetStr)
+            
+            # wait for response packet from the motor
+            timestamp = time.time()
+            time.sleep(0.0013)#0.00235)
+            
+            # read response
+            data = self.__read_response(servo_id)
+            data.append(timestamp)
+            
         return data
 
     def write(self, servo_id, address, data):
@@ -149,8 +150,6 @@ class DynamixelIO(object):
         like:
             write(1, DXL_GOAL_POSITION_L, (20, 1))
         """
-        self.ser.flushInput()
-        
         # Number of bytes following standard header (0xFF, 0xFF, id, length)
         length = 3 + len(data)  # instruction, address, len(data), checksum
         
@@ -165,16 +164,18 @@ class DynamixelIO(object):
         packet.append(checksum)
         
         packetStr = array('B', packet).tostring() # packetStr = ''.join([chr(byte) for byte in packet])
-        self.__write_serial(packetStr)
         
-        # wait for response packet from the motor
-        timestamp = time.time()
-        time.sleep(0.0013)
-        
-        # read response
-        data = self.__read_response(servo_id)
-        data.append(timestamp)
-        
+        with self.serial_mutex:
+            self.__write_serial(packetStr)
+            
+            # wait for response packet from the motor
+            timestamp = time.time()
+            time.sleep(0.0013)
+            
+            # read response
+            data = self.__read_response(servo_id)
+            data.append(timestamp)
+            
         return data
 
     def sync_write(self, address, data):
@@ -190,8 +191,6 @@ class DynamixelIO(object):
         550, the method should be called like:
             sync_write(DXL_GOAL_POSITION_L, ( (1, 20, 1), (2 ,38, 2) ))
         """
-        self.ser.flushInput()
-        
         # Calculate length and sum of all data
         flattened = [value for servo in data for value in servo]
         
@@ -208,15 +207,15 @@ class DynamixelIO(object):
         packet.append(checksum)
         
         packetStr = array('B', packet).tostring() # packetStr = ''.join([chr(byte) for byte in packet])
-        self.__write_serial(packetStr)
+        
+        with self.serial_mutex:
+            self.__write_serial(packetStr)
 
     def ping(self, servo_id):
         """ Ping the servo with "servo_id". This causes the servo to return a
         "status packet". This can tell us if the servo is attached and powered,
         and if so, if there are any errors.
         """
-        self.ser.flushInput()
-        
         # Number of bytes following standard header (0xFF, 0xFF, id, length)
         length = 2  # instruction, checksum
         
@@ -228,18 +227,20 @@ class DynamixelIO(object):
         # packet: FF  FF  ID LENGTH INSTRUCTION CHECKSUM
         packet = [0xFF, 0xFF, servo_id, length, DXL_PING, checksum]
         packetStr = array('B', packet).tostring()
-        self.__write_serial(packetStr)
         
-        # wait for response packet from the motor
-        timestamp = time.time()
-        time.sleep(0.0013)
-        
-        # read response
-        try:
-            response = self.__read_response(servo_id)
-            response.append(timestamp)
-        except Exception, e:
-            response = []
+        with self.serial_mutex:
+            self.__write_serial(packetStr)
+            
+            # wait for response packet from the motor
+            timestamp = time.time()
+            time.sleep(0.0013)
+            
+            # read response
+            try:
+                response = self.__read_response(servo_id)
+                response.append(timestamp)
+            except Exception, e:
+                response = []
             
         if response:
             self.exception_on_error(response[4], servo_id, 'ping')

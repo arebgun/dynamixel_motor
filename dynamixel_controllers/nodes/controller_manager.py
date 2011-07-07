@@ -109,7 +109,7 @@ class ControllerManager:
             return StartControllerResponse(False, 'Unknown error has occured. Unable to start controller %s\n%s' % (module_name, str(e)))
         
         kls = getattr(controller_module, class_name)
-        controller = kls(self.serial_proxy.queue_new_packet, controller_name, port_name)
+        controller = kls(self.serial_proxy.dxl_io, controller_name, port_name)
         
         if controller.initialize():
             controller.start()

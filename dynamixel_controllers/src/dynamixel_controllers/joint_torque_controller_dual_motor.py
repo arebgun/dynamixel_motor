@@ -49,14 +49,13 @@ roslib.load_manifest('dynamixel_controllers')
 import rospy
 
 from dynamixel_driver.dynamixel_const import *
-from dynamixel_driver.dynamixel_ros_commands import *
 from dynamixel_controllers.joint_controller import JointController
 
 from dynamixel_msgs.msg import JointState
 
 class JointTorqueControllerDualMotor(JointController):
-    def __init__(self, out_cb, param_path, port_name):
-        JointController.__init__(self, out_cb, param_path, port_name)
+    def __init__(self, dxl_io, param_path, port_name):
+        JointController.__init__(self, dxl_io, param_path, port_name)
         
         self.master_id = rospy.get_param(self.topic_name + '/motor_master/id')
         self.master_initial_position_raw = rospy.get_param(self.topic_name + '/motor_master/init')
@@ -119,7 +118,7 @@ class JointTorqueControllerDualMotor(JointController):
     def set_torque_enable(self, torque_enable):
         mcv_master = (self.master_id, torque_enable)
         mcv_slave = (self.slave_id, torque_enable)
-        self.send_packet_callback((DXL_SET_TORQUE_ENABLE, [mcv_master, mcv_slave]))
+        self.dxl_io.set_multi_torque_enabled([mcv_master, mcv_slave])
 
 
     def set_speed(self, speed):
@@ -129,7 +128,7 @@ class JointTorqueControllerDualMotor(JointController):
         speed_raw = int(round(speed / self.VELOCITY_PER_TICK))
         mcv_master = (self.master_id, speed_raw if speed_raw > 0 else 1)
         mcv_slave = (self.slave_id, mcv_master[1])
-        self.send_packet_callback((DXL_SET_GOAL_SPEED, [mcv_master, mcv_slave]))
+        self.dxl_io.set_multi_speed([mcv_master, mcv_slave])
 
 
     def set_compliance_slope(self, slope):
@@ -137,7 +136,7 @@ class JointTorqueControllerDualMotor(JointController):
         elif slope > DXL_MAX_COMPLIANCE_SLOPE: slope = DXL_MAX_COMPLIANCE_SLOPE
         mcv_master = (self.master_id, slope)
         mcv_slave = (self.slave_id, slope)
-        self.send_packet_callback((DXL_SET_COMPLIANCE_SLOPES, [mcv_master, mcv_slave]))
+        self.dxl_io.set_multi_compliance_slopes([mcv_master, mcv_slave])
 
 
     def set_compliance_margin(self, margin):
@@ -146,7 +145,7 @@ class JointTorqueControllerDualMotor(JointController):
         else: margin = int(margin)
         mcv_master = (self.master_id, margin)
         mcv_slave = (self.slave_id, margin)
-        self.send_packet_callback((DXL_SET_COMPLIANCE_MARGINS, [mcv_master, mcv_slave]))
+        self.dxl_io.set_multi_compliance_margins([mcv_master, mcv_slave])
 
 
     def set_compliance_punch(self, punch):
@@ -155,7 +154,7 @@ class JointTorqueControllerDualMotor(JointController):
         else: punch = int(punch)
         mcv_master = (self.master_id, punch)
         mcv_slave = (self.slave_id, punch)
-        self.send_packet_callback((DXL_SET_PUNCH, [mcv_master, mcv_slave]))
+        self.dxl_io.set_multi_punch([mcv_master, mcv_slave])
 
 
     def set_torque_limit(self, max_torque):
@@ -164,7 +163,7 @@ class JointTorqueControllerDualMotor(JointController):
         raw_torque_val = int(DXL_MAX_TORQUE_TICK * max_torque)
         mcv_master = (self.master_id, raw_torque_val)
         mcv_slave = (self.slave_id, raw_torque_val)
-        self.send_packet_callback((DXL_SET_TORQUE_LIMIT, [mcv_master, mcv_slave]))
+        self.dxl_io.set_multi_torque_limit([mcv_master, mcv_slave])
 
 
     def process_motor_states(self, state_list):

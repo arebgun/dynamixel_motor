@@ -62,9 +62,9 @@ from dynamixel_msgs.msg import MotorStateList
 from dynamixel_msgs.msg import JointState
 
 class JointController:
-    def __init__(self, out_cb, param_path, port_name):
+    def __init__(self, dxl_io, param_path, port_name):
         self.running = False
-        self.send_packet_callback = out_cb
+        self.dxl_io = dxl_io
         self.topic_name = param_path
         self.port_namespace = port_name[port_name.rfind('/') + 1:]
         self.joint_name = rospy.get_param(self.topic_name + '/joint_name')
