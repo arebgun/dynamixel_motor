@@ -62,26 +62,26 @@ from dynamixel_msgs.msg import MotorStateList
 from dynamixel_msgs.msg import JointState
 
 class JointController:
-    def __init__(self, dxl_io, param_path, port_name):
+    def __init__(self, dxl_io, controller_namespace, port_namespace):
         self.running = False
         self.dxl_io = dxl_io
-        self.topic_name = param_path
-        self.port_namespace = port_name[port_name.rfind('/') + 1:]
-        self.joint_name = rospy.get_param(self.topic_name + '/joint_name')
-        self.joint_speed = rospy.get_param(self.topic_name + '/joint_speed', 1.0)
-        self.compliance_slope = rospy.get_param(self.topic_name + '/joint_compliance_slope', None)
-        self.compliance_margin = rospy.get_param(self.topic_name + '/joint_compliance_margin', None)
-        self.compliance_punch = rospy.get_param(self.topic_name + '/joint_compliance_punch', None)
-        self.torque_limit = rospy.get_param(self.topic_name + '/joint_torque_limit', None)
+        self.controller_namespace = controller_namespace
+        self.port_namespace = port_namespace
+        self.joint_name = rospy.get_param(self.controller_namespace + '/joint_name')
+        self.joint_speed = rospy.get_param(self.controller_namespace + '/joint_speed', 1.0)
+        self.compliance_slope = rospy.get_param(self.controller_namespace + '/joint_compliance_slope', None)
+        self.compliance_margin = rospy.get_param(self.controller_namespace + '/joint_compliance_margin', None)
+        self.compliance_punch = rospy.get_param(self.controller_namespace + '/joint_compliance_punch', None)
+        self.torque_limit = rospy.get_param(self.controller_namespace + '/joint_torque_limit', None)
         
         self.__ensure_limits()
         
-        self.speed_service = rospy.Service(self.topic_name + '/set_speed', SetSpeed, self.process_set_speed)
-        self.torque_service = rospy.Service(self.topic_name + '/torque_enable', TorqueEnable, self.process_torque_enable)
-        self.compliance_slope_service = rospy.Service(self.topic_name + '/set_compliance_slope', SetComplianceSlope, self.process_set_compliance_slope)
-        self.compliance_marigin_service = rospy.Service(self.topic_name + '/set_compliance_margin', SetComplianceMargin, self.process_set_compliance_margin)
-        self.compliance_punch_service = rospy.Service(self.topic_name + '/set_compliance_punch', SetCompliancePunch, self.process_set_compliance_punch)
-        self.torque_limit_service = rospy.Service(self.topic_name + '/set_torque_limit', SetTorqueLimit, self.process_set_torque_limit)
+        self.speed_service = rospy.Service(self.controller_namespace + '/set_speed', SetSpeed, self.process_set_speed)
+        self.torque_service = rospy.Service(self.controller_namespace + '/torque_enable', TorqueEnable, self.process_torque_enable)
+        self.compliance_slope_service = rospy.Service(self.controller_namespace + '/set_compliance_slope', SetComplianceSlope, self.process_set_compliance_slope)
+        self.compliance_marigin_service = rospy.Service(self.controller_namespace + '/set_compliance_margin', SetComplianceMargin, self.process_set_compliance_margin)
+        self.compliance_punch_service = rospy.Service(self.controller_namespace + '/set_compliance_punch', SetCompliancePunch, self.process_set_compliance_punch)
+        self.torque_limit_service = rospy.Service(self.controller_namespace + '/set_torque_limit', SetTorqueLimit, self.process_set_torque_limit)
 
     def __ensure_limits(self):
         if self.compliance_slope is not None:
@@ -108,8 +108,8 @@ class JointController:
 
     def start(self):
         self.running = True
-        self.joint_state_pub = rospy.Publisher(self.topic_name + '/state', JointState)
-        self.command_sub = rospy.Subscriber(self.topic_name + '/command', Float64, self.process_command)
+        self.joint_state_pub = rospy.Publisher(self.controller_namespace + '/state', JointState)
+        self.command_sub = rospy.Subscriber(self.controller_namespace + '/command', Float64, self.process_command)
         self.motor_states_sub = rospy.Subscriber('motor_states/%s' % self.port_namespace, MotorStateList, self.process_motor_states)
 
     def stop(self):

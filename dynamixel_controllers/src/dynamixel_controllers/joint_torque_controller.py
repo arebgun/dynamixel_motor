@@ -55,13 +55,13 @@ from dynamixel_msgs.msg import JointState
 from std_msgs.msg import Float64
 
 class JointTorqueController(JointController):
-    def __init__(self, dxl_io, param_path, port_name):
-        JointController.__init__(self, dxl_io, param_path, port_name)
+    def __init__(self, dxl_io, controller_namespace, port_namespace):
+        JointController.__init__(self, dxl_io, controller_namespace, port_namespace)
         
-        self.motor_id = rospy.get_param(self.topic_name + '/motor/id')
-        self.initial_position_raw = rospy.get_param(self.topic_name + '/motor/init')
-        self.min_angle_raw = rospy.get_param(self.topic_name + '/motor/min')
-        self.max_angle_raw = rospy.get_param(self.topic_name + '/motor/max')
+        self.motor_id = rospy.get_param(self.controller_namespace + '/motor/id')
+        self.initial_position_raw = rospy.get_param(self.controller_namespace + '/motor/init')
+        self.min_angle_raw = rospy.get_param(self.controller_namespace + '/motor/min')
+        self.max_angle_raw = rospy.get_param(self.controller_namespace + '/motor/max')
         
         self.flipped = self.min_angle_raw > self.max_angle_raw
         self.last_commanded_torque = 0.0
@@ -99,7 +99,7 @@ class JointTorqueController(JointController):
         if self.compliance_punch is not None: self.set_compliance_punch(self.compliance_punch)
         if self.torque_limit is not None: self.set_torque_limit(self.torque_limit)
         
-        self.joint_max_speed = rospy.get_param(self.topic_name + '/joint_max_speed', self.MAX_VELOCITY)
+        self.joint_max_speed = rospy.get_param(self.controller_namespace + '/joint_max_speed', self.MAX_VELOCITY)
         
         if self.joint_max_speed < self.MIN_VELOCITY: self.joint_max_speed = self.MIN_VELOCITY
         elif self.joint_max_speed > self.MAX_VELOCITY: self.joint_max_speed = self.MAX_VELOCITY

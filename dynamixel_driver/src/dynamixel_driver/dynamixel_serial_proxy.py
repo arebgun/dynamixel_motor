@@ -58,9 +58,9 @@ from dynamixel_msgs.msg import MotorState
 from dynamixel_msgs.msg import MotorStateList
 
 class SerialProxy():
-    def __init__(self, port_name='/dev/ttyUSB0', baud_rate='1000000', min_motor_id=1, max_motor_id=25, update_rate=5):
+    def __init__(self, port_name='/dev/ttyUSB0', port_namespace='ttyUSB0', baud_rate='1000000', min_motor_id=1, max_motor_id=25, update_rate=5):
         self.port_name = port_name
-        self.port_namespace = port_name[port_name.rfind('/') + 1:]
+        self.port_namespace = port_namespace
         self.baud_rate = baud_rate
         self.min_motor_id = min_motor_id
         self.max_motor_id = max_motor_id

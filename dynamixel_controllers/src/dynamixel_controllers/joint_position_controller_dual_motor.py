@@ -55,16 +55,16 @@ from dynamixel_controllers.joint_controller import JointController
 from dynamixel_msgs.msg import JointState
 
 class JointPositionControllerDual(JointController):
-    def __init__(self, dxl_io, param_path, port_name):
-        JointController.__init__(self, dxl_io, param_path, port_name)
+    def __init__(self, dxl_io, controller_namespace, port_namespace):
+        JointController.__init__(self, dxl_io, controller_namespace, port_namespace)
         
-        self.master_id = rospy.get_param(self.topic_name + '/motor_master/id')
-        self.master_initial_position_raw = rospy.get_param(self.topic_name + '/motor_master/init')
-        self.master_min_angle_raw = rospy.get_param(self.topic_name + '/motor_master/min')
-        self.master_max_angle_raw = rospy.get_param(self.topic_name + '/motor_master/max')
+        self.master_id = rospy.get_param(self.controller_namespace + '/motor_master/id')
+        self.master_initial_position_raw = rospy.get_param(self.controller_namespace + '/motor_master/init')
+        self.master_min_angle_raw = rospy.get_param(self.controller_namespace + '/motor_master/min')
+        self.master_max_angle_raw = rospy.get_param(self.controller_namespace + '/motor_master/max')
         
-        self.slave_id = rospy.get_param(self.topic_name + '/motor_slave/id')
-        self.slave_offset = rospy.get_param(self.topic_name + '/motor_slave/calibration_offset', 0)
+        self.slave_id = rospy.get_param(self.controller_namespace + '/motor_slave/id')
+        self.slave_offset = rospy.get_param(self.controller_namespace + '/motor_slave/calibration_offset', 0)
         
         self.flipped = self.master_min_angle_raw > self.master_max_angle_raw
         
@@ -101,7 +101,7 @@ class JointPositionControllerDual(JointController):
         if self.compliance_punch is not None: self.set_compliance_punch(self.compliance_punch)
         if self.torque_limit is not None: self.set_torque_limit(self.torque_limit)
         
-        self.joint_max_speed = rospy.get_param(self.topic_name + '/joint_max_speed', self.MAX_VELOCITY)
+        self.joint_max_speed = rospy.get_param(self.controller_namespace + '/joint_max_speed', self.MAX_VELOCITY)
         
         if self.joint_max_speed < self.MIN_VELOCITY: self.joint_max_speed = self.MIN_VELOCITY
         elif self.joint_max_speed > self.MAX_VELOCITY: self.joint_max_speed = self.MAX_VELOCITY

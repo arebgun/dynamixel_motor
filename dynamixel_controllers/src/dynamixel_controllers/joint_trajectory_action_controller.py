@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 # Software License Agreement (BSD License)
@@ -44,6 +43,8 @@ __maintainer__ = 'Antons Rebguns'
 __email__ = 'anton@email.arizona.edu'
 
 
+from threading import Thread
+
 import roslib
 roslib.load_manifest('dynamixel_controllers')
 
@@ -54,10 +55,8 @@ from std_msgs.msg import Float64
 from trajectory_msgs.msg import JointTrajectory
 from pr2_controllers_msgs.msg import JointTrajectoryControllerState
 from pr2_controllers_msgs.msg import JointTrajectoryAction
-from dynamixel_msgs.msg import JointState
 
 from pr2_controllers_msgs.srv import QueryTrajectoryState
-from dynamixel_controllers.srv import SetSpeed
 
 class Segment():
     def __init__(self, num_joints):
@@ -67,21 +66,33 @@ class Segment():
         self.velocities = [0.0] * num_joints
 
 class JointTrajectoryActionController():
-    def __init__(self):
+    def __init__(self, controller_namespace, controllers):
         self.update_rate = 1000
+        self.state_update_rate = 50
         self.trajectory = []
         
-        self.controller_namespace = rospy.get_param('~controller_namespace', 'l_arm_controller')
-        self.joint_controllers = rospy.get_param(self.controller_namespace + '/joint_controllers', [])
-        self.joint_names = []
+        self.controller_namespace = controller_namespace
+        self.joint_names = [c.joint_name for c in controllers]
         
-        for controller in self.joint_controllers:
-            self.joint_names.append(rospy.get_param(controller + '/joint_name'))
+        self.joint_to_controller = {}
+        for c in controllers:
+            self.joint_to_controller[c.joint_name] = c
             
-        self.joint_states = dict(zip(self.joint_names, [JointState(name=jn) for jn in self.joint_names]))
+        self.port_to_joints = {}
+        for c in controllers:
+            if c.port_namespace not in self.port_to_joints: self.port_to_joints[c.port_namespace] = []
+            self.port_to_joints[c.port_namespace].append(c.joint_name)
+            
+        self.port_to_io = {}
+        for c in controllers:
+            if c.port_namespace in self.port_to_io: continue
+            self.port_to_io[c.port_namespace] = c.dxl_io
+            
+        self.joint_states = dict(zip(self.joint_names, [c.joint_state for c in controllers]))
         self.num_joints = len(self.joint_names)
         self.joint_to_idx = dict(zip(self.joint_names, range(self.num_joints)))
-        
+
+    def initialize(self):
         ns = self.controller_namespace + '/joint_trajectory_action_node/constraints'
         self.goal_time_constraint = rospy.get_param(ns + '/goal_time', 0.0)
         self.stopped_velocity_tolerance = rospy.get_param(ns + '/stopped_velocity_tolerance', 0.01)
@@ -104,27 +115,24 @@ class JointTrajectoryActionController():
         self.msg.error.positions = [0.0] * self.num_joints
         self.msg.error.velocities = [0.0] * self.num_joints
         
-        # Keep track of last position and velocity sent to each joint
-        self.last_commanded = {}
-        for joint in self.joint_names:
-            self.last_commanded[joint] = { 'position': None, 'velocity': None }
-            
-        # Publishers
-        self.state_pub = rospy.Publisher(self.controller_namespace + '/state', JointTrajectoryControllerState)
-        self.joint_position_pubs = [rospy.Publisher(controller + '/command', Float64) for controller in self.joint_controllers]
+        return True
+
+
+    def start(self):
+        self.running = True
         
-        # Subscribers
         self.command_sub = rospy.Subscriber(self.controller_namespace + '/command', JointTrajectory, self.process_command)
-        self.joint_state_subs = [rospy.Subscriber(controller + '/state', JointState, self.process_joint_states) for controller in self.joint_controllers]
-        
-        # Services
-        self.joint_velocity_srvs = [rospy.ServiceProxy(controller + '/set_speed', SetSpeed, persistent=True) for controller in self.joint_controllers]
+        self.state_pub = rospy.Publisher(self.controller_namespace + '/state', JointTrajectoryControllerState)
         self.query_state_service = rospy.Service(self.controller_namespace + '/query_state', QueryTrajectoryState, self.process_query_state)
         self.action_server = actionlib.SimpleActionServer(self.controller_namespace + '/joint_trajectory_action',
                                                           JointTrajectoryAction,
                                                           execute_cb=self.process_trajectory_action,
                                                           auto_start=False)
         self.action_server.start()
+        Thread(target=self.update_state).start()
+
+    def stop(self):
+        self.running = False
 
     def process_command(self, msg):
         if self.action_server.is_active(): self.action_server.set_preempted()
@@ -262,31 +270,57 @@ class JointTrajectoryActionController():
                 rospy.logdebug('skipping segment %d with duration of 0 seconds' % seg)
                 continue
                 
-            # loop in reverse to send commands to less important joints first,
-            # e.g. start from wrist and work up to shoulder joint
-            for joint in reversed(self.joint_names):
-                j = self.joint_names.index(joint)
+            multi_packet = {}
+            
+            for port,joints in self.port_to_joints.items():
+                vals = []
                 
-                start_position = self.joint_states[joint].current_pos
-                if seg != 0: start_position = trajectory[seg-1].positions[j]
+                for joint in joints:
+                    j = self.joint_names.index(joint)
                     
-                q[j] = trajectory[seg].positions[j]
-                qd[j] = max(self.min_velocity, abs(q[j] - start_position) / durations[seg])
+                    start_position = self.joint_states[joint].current_pos
+                    if seg != 0: start_position = trajectory[seg-1].positions[j]
+                        
+                    q[j] = trajectory[seg].positions[j]
+                    qd[j] = max(self.min_velocity, abs(q[j] - start_position) / durations[seg])
+                    
+                    self.msg.desired.positions[j] = q[j]
+                    self.msg.desired.velocities[j] = qd[j]
+                    
+                    motor_id = self.joint_to_controller[joint].motor_id
+                    pos = self.joint_to_controller[joint].pos_rad_to_raw(q[j])
+                    spd = self.joint_to_controller[joint].spd_rad_to_raw(qd[j])
+                    
+                    vals.append((motor_id,pos,spd))
+                    
+                multi_packet[port] = vals
                 
-                self.msg.desired.positions[j] = q[j]
-                self.msg.desired.velocities[j] = qd[j]
-                
-                self.set_joint_velocity(joint, qd[j])
-                self.set_joint_angle(joint, q[j])
+            for port,vals in multi_packet.items():
+                self.port_to_io[port].set_multi_position_and_speed(vals)
                 
             while time < seg_end_times[seg]:
                 # check if new trajectory was received, if so abort current trajectory execution
+                # by setting the goal to the current position
                 if self.action_server.is_preempt_requested():
                     msg = 'New trajectory received. Aborting old trajectory.'
+                    multi_packet = {}
                     
-                    for j in range(self.num_joints):
-                        cur_pos = self.joint_states[self.joint_names[j]].current_pos
-                        self.set_joint_angle(self.joint_names[j], cur_pos)
+                    for port,joints in self.port_to_joints.items():
+                        vals = []
+                        
+                        for joint in joints:
+                            j = self.joint_names.index(joint)
+                            cur_pos = self.joint_states[joint].current_pos
+                            
+                            motor_id = self.joint_to_controller[joint].motor_id
+                            pos = self.joint_to_controller[joint].pos_rad_to_raw(current_pos)
+                            
+                            vals.append((motor_id,pos))
+                            
+                        multi_packet[port] = vals
+                        
+                    for port,vals in multi_packet.items():
+                        self.port_to_io[port].set_multi_position(vals)
                         
                     self.action_server.set_preempted(text=msg)
                     rospy.logwarn(msg)
@@ -304,10 +338,6 @@ class JointTrajectoryActionController():
                     self.action_server.set_aborted(text=msg)
                     return
                     
-        traj_actual_time = (rospy.Time.now() - traj_start_time).to_sec()
-        traj_time_err = traj_actual_time - sum(durations)
-        rospy.loginfo('Trajectory execution took %f seconds, error is %f' % (traj_actual_time, traj_time_err))
-        
         # let motors roll for specified amount of time
         rospy.sleep(self.goal_time_constraint)
         
@@ -326,64 +356,19 @@ class JointTrajectoryActionController():
             rospy.loginfo('Trajectory execution successfully completed')
             self.action_server.set_succeeded()
 
-
-
-    ################################################################################
-    #----------------------- Low-level servo control functions --------------------#
-    ################################################################################
-
-    def process_joint_states(self, msg):
-        self.msg.header.stamp = rospy.Time.now()
-        
-        self.joint_states[msg.name] = msg
-        
-        # Publish current joint state
-        for i, joint in enumerate(self.joint_names):
-            state = self.joint_states[joint]
-            self.msg.actual.positions[i] = state.current_pos
-            self.msg.actual.velocities[i] = abs(state.velocity)
-            self.msg.error.positions[i] = self.msg.actual.positions[i] - self.msg.desired.positions[i]
-            self.msg.error.velocities[i] = self.msg.actual.velocities[i] - self.msg.desired.velocities[i]
+    def update_state(self):
+        rate = rospy.Rate(self.state_update_rate)
+        while self.running and not rospy.is_shutdown():
+            self.msg.header.stamp = rospy.Time.now()
             
-        self.state_pub.publish(self.msg)
-
-    def command_will_update(self, command, joint, value):
-        current_state = None
-        command_resolution = None
-        
-        if command == 'position':
-            current_state = self.joint_states[joint].current_pos
-            command_resolution = 0.006
-        elif command == 'velocity':
-            current_state = self.joint_states[joint].velocity
-            command_resolution = 0.05
-        else:
-            rospy.logerr('Unrecognized motor command %s while setting %s to %f', command, joint, value)
-            return False
-            
-        last_commanded = self.last_commanded[joint][command]
-        
-        # no sense in sending command, change is too small for the motors to move
-        if last_commanded is not None and (abs(value - last_commanded) < command_resolution): return False
-        if current_state is not None and (abs(value - current_state) < command_resolution): return False
-        
-        self.last_commanded[joint][command] = value
-        
-        return True
-
-    def set_joint_velocity(self, joint, velocity):
-        if self.command_will_update('velocity', joint, velocity):
-            self.joint_velocity_srvs[self.joint_to_idx[joint]](velocity)
-
-    def set_joint_angle(self, joint, angle):
-        if self.command_will_update('position', joint, angle):
-            self.joint_position_pubs[self.joint_to_idx[joint]].publish(angle)
-
-
-if __name__ == '__main__':
-    try:
-        rospy.init_node('joint_trajectory_action_controller', anonymous=True)
-        traj_controller = JointTrajectoryActionController()
-        rospy.spin()
-    except rospy.ROSInterruptException: pass
+            # Publish current joint state
+            for i, joint in enumerate(self.joint_names):
+                state = self.joint_states[joint]
+                self.msg.actual.positions[i] = state.current_pos
+                self.msg.actual.velocities[i] = abs(state.velocity)
+                self.msg.error.positions[i] = self.msg.actual.positions[i] - self.msg.desired.positions[i]
+                self.msg.error.velocities[i] = self.msg.actual.velocities[i] - self.msg.desired.velocities[i]
+                
+            self.state_pub.publish(self.msg)
+            rate.sleep()
 

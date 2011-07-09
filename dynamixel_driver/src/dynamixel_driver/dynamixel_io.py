@@ -67,6 +67,7 @@ class DynamixelIO(object):
             self.ser = serial.Serial(port)
             self.ser.setTimeout(0.015)
             self.ser.baudrate = baudrate
+            self.port_name = port
         except SerialOpenError:
            raise SerialOpenError(port, baudrate)
 

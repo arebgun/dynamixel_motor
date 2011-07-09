@@ -56,29 +56,82 @@ from dynamixel_controllers.srv import StartController
 from dynamixel_controllers.srv import StopController
 from dynamixel_controllers.srv import RestartController
 
+
+parser = OptionParser()
+
+def manage_controller(controller_name, port_namespace, controller_type, command, deps, start, stop, restart):
+    try:
+        controller = rospy.get_param(controller_name + '/controller')
+        package_path = roslib.packages.get_pkg_dir(controller['package'])
+        package_path = os.path.join(package_path, 'src', controller['package'])
+        module_name = controller['module']
+        class_name = controller['type']
+    except KeyError as ke:
+        rospy.logerr('[%s] configuration error: could not find controller parameters on parameter server' % controller_name)
+        sys.exit(1)
+    except InvalidROSPkgException as pe:
+        rospy.logerr('[%s] configuration error: %s' % (controller_name, pe))
+        sys.exit(1)
+    except Exception as e:
+        rospy.logerr('[%s]: %s' % (controller_name, e))
+        sys.exit(1)
+        
+    if command.lower() == 'start':
+        try:
+            response = start(port_namespace, package_path, module_name, class_name, controller_name, deps)
+            if response.success: rospy.loginfo(response.reason)
+            else: rospy.logerr(response.reason)
+        except rospy.ServiceException, e:
+            rospy.logerr('Service call failed: %s' % e)
+    elif command.lower() == 'stop':
+        try:
+            response = stop(controller_name)
+            if response.success: rospy.loginfo(response.reason)
+            else: rospy.logerr(response.reason)
+        except rospy.ServiceException, e:
+            rospy.logerr('Service call failed: %s' % e)
+    elif command.lower() == 'restart':
+        try:
+            response = restart(port_namespace, package_path, module_name, class_name, controller_name, deps)
+            if response.success: rospy.loginfo(response.reason)
+            else: rospy.logerr(response.reason)
+        except rospy.ServiceException, e:
+            rospy.logerr('Service call failed: %s' % e)
+    else:
+        rospy.logerr('Invalid command.')
+        parser.print_help()
+
 if __name__ == '__main__':
-    parser = OptionParser()
-    parser.add_option('-p', '--port', metavar='PORT', default='/dev/ttyUSB0',
-                      help='motors of specified controllers are connected to PORT [default: %default]')
-    parser.add_option('-c', '--command', metavar='COMMAND', default='start',
+    rospy.init_node('controller_spawner', anonymous=True)
+    
+    parser.add_option('-m', '--manager', metavar='MANAGER',
+                      help='specified serial port is managed by MANAGER')
+    parser.add_option('-p', '--port', metavar='PORT',
+                      help='motors of specified controllers are connected to PORT')
+    parser.add_option('-t', '--type', metavar='TYPE', default='simple', choices=('simple','meta'),
+                      help='type of controller to be loaded (simple|meta) [default: %default]')
+    parser.add_option('-c', '--command', metavar='COMMAND', default='start', choices=('start','stop','restart'),
                       help='command to perform on specified controllers: start, stop or restart [default: %default]')
                       
     (options, args) = parser.parse_args(rospy.myargv()[1:])
     
     if len(args) < 1:
-        print 'Specify at least one controller name to manage'
+        parser.error('specify at least one controller name')
         
-    port = options.port
+    manager_namespace = options.manager
+    port_namespace = options.port
+    controller_type = options.type
     command = options.command
     joint_controllers = args
     
-    device_namespace = port[port.rfind('/') + 1:]
-    start_service_name = 'start_controller/%s' % device_namespace
-    stop_service_name = 'stop_controller/%s' % device_namespace
-    restart_service_name = 'restart_controller/%s' % device_namespace
+    if controller_type == 'meta': port_namespace = 'meta'
+    
+    start_service_name = '%s/%s/start_controller' % (manager_namespace, port_namespace)
+    stop_service_name = '%s/%s/stop_controller' % (manager_namespace, port_namespace)
+    restart_service_name = '%s/%s/restart_controller' % (manager_namespace, port_namespace)
     
     parent_namespace = 'global' if rospy.get_namespace() == '/' else rospy.get_namespace()
-    rospy.loginfo('%s controller_spawner: waiting for controller_manager to startup in %s namespace...' % (device_namespace, parent_namespace))
+    rospy.loginfo('%s controller_spawner: waiting for controller_manager %s to startup in %s namespace...' % (port_namespace, manager_namespace, parent_namespace))
     
     rospy.wait_for_service(start_service_name)
     rospy.wait_for_service(stop_service_name)
@@ -88,47 +141,13 @@ if __name__ == '__main__':
     stop_controller = rospy.ServiceProxy(stop_service_name, StopController)
     restart_controller = rospy.ServiceProxy(restart_service_name, RestartController)
     
-    rospy.loginfo('%s controller_spawner: All services are up, spawning controllers...' % device_namespace)
+    rospy.loginfo('%s controller_spawner: All services are up, spawning controllers...' % port_namespace)
     
-    for controller_name in joint_controllers:
-        try:
-            controller = rospy.get_param(controller_name + '/controller')
-            package_path = roslib.packages.get_pkg_dir(controller['package'])
-            package_path = os.path.join(package_path, 'src', controller['package'])
-            module_name = controller['module']
-            class_name = controller['type']
-        except KeyError as ke:
-            rospy.logerr('[%s] configuration error: could not find controller parameters on parameter server' % controller_name)
-            sys.exit(1)
-        except InvalidROSPkgException as pe:
-            rospy.logerr('[%s] configuration error: %s' % (controller_name, pe))
-            sys.exit(1)
-        except Exception as e:
-            rospy.logerr('[%s]: %s' % (controller_name, e))
-            sys.exit(1)
-            
-        if command.lower() == 'start':
-            try:
-                response = start_controller(port, package_path, module_name, class_name, controller_name)
-                if response.success: rospy.loginfo(response.reason)
-                else: rospy.logerr(response.reason)
-            except rospy.ServiceException, e:
-                rospy.logerr('Service call failed: %s' % e)
-        elif command.lower() == 'stop':
-            try:
-                response = stop_controller(controller_name)
-                if response.success: rospy.loginfo(response.reason)
-                else: rospy.logerr(response.reason)
-            except rospy.ServiceException, e:
-                rospy.logerr('Service call failed: %s' % e)
-        elif command.lower() == 'restart':
-            try:
-                response = restart_controller(port, package_path, module_name, class_name, controller_name)
-                if response.success: rospy.loginfo(response.reason)
-                else: rospy.logerr(response.reason)
-            except rospy.ServiceException, e:
-                rospy.logerr('Service call failed: %s' % e)
-        else:
-            rospy.logerr('Invalid command.')
-            parser.print_help()
+    if controller_type == 'simple':
+        for controller_name in joint_controllers:
+            manage_controller(controller_name, port_namespace, controller_type, command, [], start_controller, stop_controller, restart_controller)
+    elif controller_type == 'meta':
+        controller_name = joint_controllers[0]
+        dependencies = joint_controllers[1:]
+        manage_controller(controller_name, port_namespace, controller_type, command, dependencies, start_controller, stop_controller, restart_controller)
 

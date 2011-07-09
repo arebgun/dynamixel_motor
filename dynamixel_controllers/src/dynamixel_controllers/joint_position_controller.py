@@ -55,13 +55,13 @@ from dynamixel_controllers.joint_controller import JointController
 from dynamixel_msgs.msg import JointState
 
 class JointPositionController(JointController):
-    def __init__(self, dxl_io, param_path, port_name):
-        JointController.__init__(self, dxl_io, param_path, port_name)
+    def __init__(self, dxl_io, controller_namespace, port_namespace):
+        JointController.__init__(self, dxl_io, controller_namespace, port_namespace)
         
-        self.motor_id = rospy.get_param(self.topic_name + '/motor/id')
-        self.initial_position_raw = rospy.get_param(self.topic_name + '/motor/init')
-        self.min_angle_raw = rospy.get_param(self.topic_name + '/motor/min')
-        self.max_angle_raw = rospy.get_param(self.topic_name + '/motor/max')
+        self.motor_id = rospy.get_param(self.controller_namespace + '/motor/id')
+        self.initial_position_raw = rospy.get_param(self.controller_namespace + '/motor/init')
+        self.min_angle_raw = rospy.get_param(self.controller_namespace + '/motor/min')
+        self.max_angle_raw = rospy.get_param(self.controller_namespace + '/motor/max')
         
         self.flipped = self.min_angle_raw > self.max_angle_raw
         
@@ -97,7 +97,7 @@ class JointPositionController(JointController):
         if self.compliance_punch is not None: self.set_compliance_punch(self.compliance_punch)
         if self.torque_limit is not None: self.set_torque_limit(self.torque_limit)
         
-        self.joint_max_speed = rospy.get_param(self.topic_name + '/joint_max_speed', self.MAX_VELOCITY)
+        self.joint_max_speed = rospy.get_param(self.controller_namespace + '/joint_max_speed', self.MAX_VELOCITY)
         
         if self.joint_max_speed < self.MIN_VELOCITY: self.joint_max_speed = self.MIN_VELOCITY
         elif self.joint_max_speed > self.MAX_VELOCITY: self.joint_max_speed = self.MAX_VELOCITY
@@ -109,15 +109,22 @@ class JointPositionController(JointController):
         
         return True
 
+    def pos_rad_to_raw(self, pos_rad):
+        if pos_rad < self.min_angle: pos_rad = self.min_angle
+        elif pos_rad > self.max_angle: pos_rad = self.max_angle
+        return self.rad_to_raw(pos_rad, self.initial_position_raw, self.flipped, self.ENCODER_TICKS_PER_RADIAN)
+
+    def spd_rad_to_raw(self, spd_rad):
+        if spd_rad < self.MIN_VELOCITY: spd_rad = self.MIN_VELOCITY
+        elif spd_rad > self.joint_max_speed: spd_rad = self.joint_max_speed
+        return int(round(spd_rad / self.VELOCITY_PER_TICK))
+
     def set_torque_enable(self, torque_enable):
         mcv = (self.motor_id, torque_enable)
         self.dxl_io.set_multi_torque_enabled([mcv])
 
     def set_speed(self, speed):
-        if speed < self.MIN_VELOCITY: speed = self.MIN_VELOCITY
-        elif speed > self.joint_max_speed: speed = self.joint_max_speed
-        speed_raw = int(round(speed / self.VELOCITY_PER_TICK))
-        mcv = (self.motor_id, speed_raw)
+        mcv = (self.motor_id, self.spd_rad_to_raw(speed))
         self.dxl_io.set_multi_speed([mcv])
 
     def set_compliance_slope(self, slope):
@@ -165,8 +172,6 @@ class JointPositionController(JointController):
 
     def process_command(self, msg):
         angle = msg.data
-        if angle < self.min_angle: angle = self.min_angle
-        elif angle > self.max_angle: angle = self.max_angle
-        mcv = (self.motor_id, self.rad_to_raw(angle, self.initial_position_raw, self.flipped, self.ENCODER_TICKS_PER_RADIAN))
+        mcv = (self.motor_id, self.pos_rad_to_raw(angle))
         self.dxl_io.set_multi_position([mcv])
 

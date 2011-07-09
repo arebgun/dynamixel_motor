@@ -3,7 +3,8 @@
 #
 # Software License Agreement (BSD License)
 #
-# Copyright (c) 2010-2011, Antons Rebguns, Cody Jorgensen, Cara Slutter.
+# Copyright (c) 2010, Antons Rebguns, Cody Jorgensen, Cara Slutter
+#               2010-2011, Antons Rebguns
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -60,25 +61,65 @@ from dynamixel_controllers.srv import RestartControllerResponse
 
 class ControllerManager:
     def __init__(self):
-        rospy.init_node('dynamixel_controller_manager', anonymous=False)
+        rospy.init_node('dynamixel_controller_manager', anonymous=True)
+        rospy.on_shutdown(self.on_shutdown)
         
-        port_name = rospy.get_param('~port_name', '/dev/ttyUSB0')
-        baud_rate = rospy.get_param('~baud_rate', 1000000)
-        min_motor_id = rospy.get_param('~min_motor_id', 1)
-        max_motor_id = rospy.get_param('~max_motor_id', 25)
-        update_rate = rospy.get_param("~update_rate", 5)
-        namespace = port_name[port_name.rfind('/') + 1:]
-        
-        self.serial_proxy = SerialProxy(port_name, baud_rate, min_motor_id, max_motor_id, update_rate)
-        self.serial_proxy.connect()
-        
-        rospy.on_shutdown(self.serial_proxy.disconnect)
-        
+        self.waiting_meta_controllers = []
         self.controllers = {}
+        self.serial_proxies = {}
         
-        rospy.Service('start_controller/%s' % namespace, StartController, self.start_controller)
-        rospy.Service('stop_controller/%s' % namespace, StopController, self.stop_controller)
-        rospy.Service('restart_controller/%s' % namespace, RestartController, self.restart_controller)
+        manager_namespace = rospy.get_param('~namespace')
+        serial_ports = rospy.get_param('~serial_ports')
+        
+        for port_namespace,port_config in serial_ports.items():
+            port_name = port_config['port_name']
+            baud_rate = port_config['baud_rate']
+            min_motor_id = port_config['min_motor_id'] if 'min_motor_id' in port_config else 1
+            max_motor_id = port_config['max_motor_id'] if 'max_motor_id' in port_config else 253
+            update_rate = port_config['update_rate'] if 'update_rate' in port_config else 5
+            
+            serial_proxy = SerialProxy(port_name, port_namespace, baud_rate, min_motor_id, max_motor_id, update_rate)
+            serial_proxy.connect()
+            
+            # will create a set of services for each serial port under common manager namesapce
+            # e.g. /dynamixel_manager/robot_arm_port/start_controller
+            #      /dynamixel_manager/robot_head_port/start_controller
+            # where 'dynamixel_manager' is manager's namespace
+            #       'robot_arm_port' and 'robot_head_port' are human readable names for serial ports
+            rospy.Service('%s/%s/start_controller' % (manager_namespace, port_namespace), StartController, self.start_controller)
+            rospy.Service('%s/%s/stop_controller' % (manager_namespace, port_namespace), StopController, self.stop_controller)
+            rospy.Service('%s/%s/restart_controller' % (manager_namespace, port_namespace), RestartController, self.restart_controller)
+            
+            self.serial_proxies[port_namespace] = serial_proxy
+            
+        # services for 'meta' controllers, e.g. joint trajectory controller
+        # these controllers don't have their own serial port, instead they rely
+        # on regular controllers for serial connection. The advantage of meta
+        # controller is that it can pack commands for multiple motors on multiple
+        # serial ports.
+        # NOTE: all serial ports that meta controller needs should be managed by
+        # the same controler manager.
+        rospy.Service('%s/meta/start_controller' % manager_namespace, StartController, self.start_controller)
+        rospy.Service('%s/meta/stop_controller' % manager_namespace, StopController, self.stop_controller)
+        rospy.Service('%s/meta/restart_controller' % manager_namespace, RestartController, self.restart_controller)
+
+    def on_shutdown(self):
+        for serial_proxy in self.serial_proxies.values():
+            serial_proxy.disconnect()
+
+    def check_deps(self):
+        for controller_name,deps,kls in self.waiting_meta_controllers:
+            if not set(deps).issubset(self.controllers.keys()):
+                rospy.logwarn('[%s] not all dependencies started, still waiting for %s...' % (controller_name, str(list(set(deps).difference(self.controllers.keys())))))
+            else:
+                dependencies = [self.controllers[dep_name] for dep_name in deps]
+                controller = kls(controller_name, dependencies)
+                
+                if controller.initialize():
+                    controller.start()
+                    self.controllers[controller_name] = controller
+                    
+                self.waiting_meta_controllers = self.waiting_meta_controllers[1:]
 
     def start_controller(self, req):
         port_name = req.port_name
@@ -109,11 +150,23 @@ class ControllerManager:
             return StartControllerResponse(False, 'Unknown error has occured. Unable to start controller %s\n%s' % (module_name, str(e)))
         
         kls = getattr(controller_module, class_name)
-        controller = kls(self.serial_proxy.dxl_io, controller_name, port_name)
+        
+        if port_name == 'meta':
+            self.waiting_meta_controllers.append((controller_name,req.dependencies,kls))
+            self.check_deps()
+            return StartControllerResponse(True, '')
+            
+        if port_name != 'meta' and (port_name not in self.serial_proxies):
+            return StartControllerResponse(False, 'Specified port [%s] not found, available ports are %s. Unable to start controller %s' % (port_name, str(self.serial_proxies.keys()), controller_name))
+            
+        controller = kls(self.serial_proxies[port_name].dxl_io, controller_name, port_name)
         
         if controller.initialize():
             controller.start()
             self.controllers[controller_name] = controller
+            
+            self.check_deps()
+            
             return StartControllerResponse(True, 'Controller %s successfully started.' % controller_name)
         else:
             return StartControllerResponse(False, 'Initialization failed. Unable to start controller %s' % controller_name)
@@ -129,7 +182,7 @@ class ControllerManager:
             return StopControllerResponse(False, 'controller %s was not running.' % controller_name)
 
     def restart_controller(self, req):
-        response1 = self.stop_controller(req)
+        response1 = self.stop_controller(StopController(req.controller_name))
         response2 = self.start_controller(req)
         return RestartControllerResponse(response1.success and response2.success, '%s\n%s' % (response1.reason, response2.reason))
 
