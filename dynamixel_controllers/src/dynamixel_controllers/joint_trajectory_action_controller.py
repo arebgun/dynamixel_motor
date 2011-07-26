@@ -313,7 +313,7 @@ class JointTrajectoryActionController():
                             cur_pos = self.joint_states[joint].current_pos
                             
                             motor_id = self.joint_to_controller[joint].motor_id
-                            pos = self.joint_to_controller[joint].pos_rad_to_raw(current_pos)
+                            pos = self.joint_to_controller[joint].pos_rad_to_raw(cur_pos)
                             
                             vals.append((motor_id,pos))
                             
