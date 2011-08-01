@@ -140,7 +140,7 @@ class JointTrajectoryActionController():
         while self.action_server.is_active():
             sleep(0.01)
             
-        process_trajectory_action(msg)
+        self.process_trajectory_action(msg)
 
     def process_query_state(self, req):
         if not self.trajectory: return False
