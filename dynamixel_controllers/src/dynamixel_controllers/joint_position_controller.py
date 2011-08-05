@@ -117,7 +117,8 @@ class JointPositionController(JointController):
     def spd_rad_to_raw(self, spd_rad):
         if spd_rad < self.MIN_VELOCITY: spd_rad = self.MIN_VELOCITY
         elif spd_rad > self.joint_max_speed: spd_rad = self.joint_max_speed
-        return int(round(spd_rad / self.VELOCITY_PER_TICK))
+        # velocity of 0 means maximum, make sure that doesn't happen
+        return max(1, int(round(spd_rad / self.VELOCITY_PER_TICK)))
 
     def set_torque_enable(self, torque_enable):
         mcv = (self.motor_id, torque_enable)

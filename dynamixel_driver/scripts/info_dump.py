@@ -49,7 +49,7 @@ import roslib
 roslib.load_manifest('dynamixel_driver')
 
 from dynamixel_driver import dynamixel_io
-from dynamixel_driver.dynamixel_const import DXL_MODEL_TO_NAME
+from dynamixel_driver.dynamixel_const import *
 
 def print_data(values):
     ''' Takes a dictionary with all the motor values and does a formatted print.
@@ -118,7 +118,7 @@ if __name__ == '__main__':
                 angles = dxl_io.get_angle_limits(motor_id)
                 model = dxl_io.get_model_number(motor_id)
                 firmware = dxl_io.get_firmware_version(motor_id)
-                values['model'] = '%s (firmware version: %d)' % (DXL_MODEL_TO_NAME[model], firmware)
+                values['model'] = '%s (firmware version: %d)' % (DXL_MODEL_TO_PARAMS[model]['name'], firmware)
                 values['degree_symbol'] = u"\u00B0"
                 values['min'] = angles['min']
                 values['max'] = angles['max']

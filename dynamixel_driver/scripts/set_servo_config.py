@@ -74,6 +74,7 @@ if __name__ == '__main__':
                       help='set servo motor maximum voltage limit')
                       
     (options, args) = parser.parse_args(sys.argv)
+    print options
     
     if len(args) < 2:
         parser.print_help()
@@ -98,10 +99,10 @@ if __name__ == '__main__':
                 if options.return_delay:
                     print 'Setting return delay time to %d us' % options.return_delay * 2
                     dxl_io.set_return_delay_time(motor_id, options.return_delay)
-                if options.cw_angle_limit:
+                if options.cw_angle_limit is not None:
                     print 'Setting CW angle limit to %d' % options.cw_angle_limit
                     dxl_io.set_angle_limit_cw(motor_id, options.cw_angle_limit)
-                if options.ccw_angle_limit:
+                if options.ccw_angle_limit is not None:
                     print 'Setting CCW angle limit to %d' % options.ccw_angle_limit
                     dxl_io.set_angle_limit_ccw(motor_id, options.ccw_angle_limit)
                 if options.min_voltage_limit:
