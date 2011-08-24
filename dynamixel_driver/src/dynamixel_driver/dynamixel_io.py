@@ -750,6 +750,20 @@ class DynamixelIO(object):
         # return the data in a dictionary
         return {'min':cwLimit, 'max':ccwLimit}
 
+    def get_voltage_limits(self, servo_id):
+        """
+        Returns the min and max voltage limits from the specified servo.
+        """
+        response = self.read(servo_id, DXL_DOWN_LIMIT_VOLTAGE, 2)
+        if response:
+            self.exception_on_error(response[4], servo_id, 'fetching voltage limits')
+        # extract data valus from the raw data
+        min_voltage = response[5] / 10.0
+        max_voltage = response[6] / 10.0
+        
+        # return the data in a dictionary
+        return {'min':min_voltage, 'max':max_voltage}
+
     def get_position(self, servo_id):
         """ Reads the servo's position value from its registers. """
         response = self.read(servo_id, DXL_PRESENT_POSITION_L, 2)

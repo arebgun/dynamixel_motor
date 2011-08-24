@@ -43,6 +43,8 @@ __maintainer__ = 'Antons Rebguns'
 __email__ = 'anton@email.arizona.edu'
 
 
+from threading import Thread
+
 import sys
 
 import roslib
@@ -51,6 +53,10 @@ roslib.load_manifest('dynamixel_controllers')
 import rospy
 
 from dynamixel_driver.dynamixel_serial_proxy import SerialProxy
+
+from diagnostic_msgs.msg import DiagnosticArray
+from diagnostic_msgs.msg import DiagnosticStatus
+from diagnostic_msgs.msg import KeyValue
 
 from dynamixel_controllers.srv import StartController
 from dynamixel_controllers.srv import StartControllerResponse
@@ -67,6 +73,7 @@ class ControllerManager:
         self.waiting_meta_controllers = []
         self.controllers = {}
         self.serial_proxies = {}
+        self.update_rate = 5
         
         manager_namespace = rospy.get_param('~namespace')
         serial_ports = rospy.get_param('~serial_ports')
@@ -91,6 +98,7 @@ class ControllerManager:
             rospy.Service('%s/%s/restart_controller' % (manager_namespace, port_namespace), RestartController, self.restart_controller)
             
             self.serial_proxies[port_namespace] = serial_proxy
+            self.update_rate = max(update_rate, self.update_rate)
             
         # services for 'meta' controllers, e.g. joint trajectory controller
         # these controllers don't have their own serial port, instead they rely
@@ -102,10 +110,55 @@ class ControllerManager:
         rospy.Service('%s/meta/start_controller' % manager_namespace, StartController, self.start_controller)
         rospy.Service('%s/meta/stop_controller' % manager_namespace, StopController, self.stop_controller)
         rospy.Service('%s/meta/restart_controller' % manager_namespace, RestartController, self.restart_controller)
+        
+        self.diagnostics_pub = rospy.Publisher('/diagnostics', DiagnosticArray)
+        Thread(target=self.diagnostics_processor).start()
 
     def on_shutdown(self):
         for serial_proxy in self.serial_proxies.values():
             serial_proxy.disconnect()
+
+    def diagnostics_processor(self):
+        diag_msg = DiagnosticArray()
+        
+        rate = rospy.Rate(self.update_rate)
+        while not rospy.is_shutdown():
+            diag_msg.status = []
+            diag_msg.header.stamp = rospy.Time.now()
+            
+            for controller in self.controllers.values():
+                try:
+                    joint_state = controller.joint_state
+                    temps = joint_state.motor_temps
+                    max_temp = max(temps)
+                    
+                    status = DiagnosticStatus()
+                    status.name = 'Joint Controller (%s)' % controller.joint_name
+                    status.hardware_id = 'Robotis Dynamixel %s on port %s' % (str(joint_state.motor_ids), controller.port_namespace)
+                    status.values.append(KeyValue('Goal', str(joint_state.goal_pos)))
+                    status.values.append(KeyValue('Position', str(joint_state.current_pos)))
+                    status.values.append(KeyValue('Error', str(joint_state.error)))
+                    status.values.append(KeyValue('Velocity', str(joint_state.velocity)))
+                    status.values.append(KeyValue('Load', str(joint_state.load)))
+                    status.values.append(KeyValue('Moving', str(joint_state.is_moving)))
+                    status.values.append(KeyValue('Temperature', str(max_temp)))
+                    
+                    if max_temp > 76:
+                        status.level = DiagnosticStatus.ERROR
+                        status.message = 'OVERHEATING'
+                    elif max_temp > 73:
+                        status.level = DiagnosticStatus.WARN
+                        status.message = 'VERY HOT'
+                    else:
+                        status.level = DiagnosticStatus.OK
+                        status.message = 'OK'
+                        
+                    diag_msg.status.append(status)
+                except:
+                    pass
+                    
+            self.diagnostics_pub.publish(diag_msg)
+            rate.sleep()
 
     def check_deps(self):
         for controller_name,deps,kls in self.waiting_meta_controllers:

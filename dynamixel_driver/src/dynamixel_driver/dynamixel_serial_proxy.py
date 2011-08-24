@@ -45,6 +45,7 @@ __email__ = 'anton@email.arizona.edu'
 import math
 import sys
 import errno
+from collections import deque
 from threading import Thread
 
 import roslib
@@ -53,6 +54,10 @@ roslib.load_manifest('dynamixel_driver')
 import rospy
 import dynamixel_io
 from dynamixel_driver.dynamixel_const import *
+
+from diagnostic_msgs.msg import DiagnosticArray
+from diagnostic_msgs.msg import DiagnosticStatus
+from diagnostic_msgs.msg import KeyValue
 
 from dynamixel_msgs.msg import MotorState
 from dynamixel_msgs.msg import MotorStateList
@@ -65,8 +70,14 @@ class SerialProxy():
         self.min_motor_id = min_motor_id
         self.max_motor_id = max_motor_id
         self.update_rate = update_rate
+        self.diagnostics_rate = update_rate
+        
+        self.actual_rate = update_rate
+        self.error_counts = {'non_fatal': 0, 'checksum': 0, 'dropped': 0}
+        self.current_state = MotorStateList()
         
         self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList)
+        self.diagnostics_pub = rospy.Publisher('/diagnostics', DiagnosticArray)
 
     def connect(self):
         try:
@@ -78,6 +89,7 @@ class SerialProxy():
             
         self.running = True
         if self.update_rate > 0: Thread(target=self.__update_motor_states).start()
+        Thread(target=self.__publish_diagnostic_information).start()
 
     def disconnect(self):
         self.running = False
@@ -114,10 +126,23 @@ class SerialProxy():
         rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
         rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
         rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
+        
+        # keep some parameters around for diagnostics
+        self.motor_static_info[motor_id] = {}
+        self.motor_static_info[motor_id]['model'] = DXL_MODEL_TO_PARAMS[model_number]['name']
+        self.motor_static_info[motor_id]['firmware'] = self.dxl_io.get_firmware_version(motor_id)
+        self.motor_static_info[motor_id]['delay'] = self.dxl_io.get_return_delay_time(motor_id)
+        self.motor_static_info[motor_id]['min_angle'] = angles['min']
+        self.motor_static_info[motor_id]['max_angle'] = angles['max']
+        
+        voltages = self.dxl_io.get_voltage_limits(motor_id)
+        self.motor_static_info[motor_id]['min_voltage'] = voltages['min']
+        self.motor_static_info[motor_id]['max_voltage'] = voltages['max']
 
     def __find_motors(self):
         rospy.loginfo('Pinging motor IDs %d through %d...' % (self.min_motor_id, self.max_motor_id))
         self.motors = []
+        self.motor_static_info = {}
         
         try:
             for motor_id in range(self.min_motor_id, self.max_motor_id + 1):
@@ -156,6 +181,10 @@ class SerialProxy():
             rospy.loginfo(dpe.message)
 
     def __update_motor_states(self):
+        num_events = 50
+        rates = deque([float(self.update_rate)]*num_events, maxlen=num_events)
+        last_time = rospy.Time.now()
+        
         rate = rospy.Rate(self.update_rate)
         while self.running:
             # get current state of all motors and publish to motor_states topic
@@ -170,10 +199,13 @@ class SerialProxy():
                     rospy.logfatal(fece)
                     rospy.signal_shutdown(fece)
                 except dynamixel_io.NonfatalErrorCodeError, nfece:
+                    self.error_counts['non_fatal'] += 1
                     rospy.logdebug(nfece)
                 except dynamixel_io.ChecksumError, cse:
+                    self.error_counts['checksum'] += 1
                     rospy.logdebug(cse)
                 except dynamixel_io.DroppedPacketError, dpe:
+                    self.error_counts['dropped'] += 1
                     rospy.logdebug(dpe.message)
                 except OSError, ose:
                     if ose.errno != errno.EAGAIN:
@@ -185,6 +217,82 @@ class SerialProxy():
                 msl.motor_states = motor_states
                 self.motor_states_pub.publish(msl)
                 
+                self.current_state = msl
+                
+                # calculate actual update rate
+                current_time = rospy.Time.now()
+                rates.append(1.0 / (current_time - last_time).to_sec())
+                self.actual_rate = round(sum(rates)/num_events, 2)
+                last_time = current_time
+                
+            rate.sleep()
+
+    def __publish_diagnostic_information(self):
+        diag_msg = DiagnosticArray()
+        
+        rate = rospy.Rate(self.diagnostics_rate)
+        while self.running:
+            diag_msg.status = []
+            diag_msg.header.stamp = rospy.Time.now()
+            
+            status = DiagnosticStatus()
+            
+            status.name = 'Dynamixel Serial Bus (%s)' % self.port_namespace
+            status.hardware_id = 'Dynamixel Serial Bus on port %s' % self.port_name
+            status.values.append(KeyValue('Baud Rate', str(self.baud_rate)))
+            status.values.append(KeyValue('Min Motor ID', str(self.min_motor_id)))
+            status.values.append(KeyValue('Max Motor ID', str(self.max_motor_id)))
+            status.values.append(KeyValue('Desired Update Rate', str(self.update_rate)))
+            status.values.append(KeyValue('Actual Update Rate', str(self.actual_rate)))
+            status.values.append(KeyValue('# Non Fatal Errors', str(self.error_counts['non_fatal'])))
+            status.values.append(KeyValue('# Checksum Errors', str(self.error_counts['checksum'])))
+            status.values.append(KeyValue('# Dropped Packet Errors', str(self.error_counts['dropped'])))
+            status.level = DiagnosticStatus.OK
+            status.message = 'OK'
+            
+            if self.actual_rate - self.update_rate < -5:
+                status.level = DiagnosticStatus.WARN
+                status.message = 'Actual update rate is lower than desired'
+                
+            diag_msg.status.append(status)
+            
+            for motor_state in self.current_state.motor_states:
+                mid = motor_state.id
+                
+                status = DiagnosticStatus()
+                
+                status.name = 'Robotis Dynamixel Motor %d on port %s' % (mid, self.port_namespace)
+                status.hardware_id = 'DXL-%d@%s' % (motor_state.id, self.port_namespace)
+                status.values.append(KeyValue('Model Name', str(self.motor_static_info[mid]['model'])))
+                status.values.append(KeyValue('Firmware Version', str(self.motor_static_info[mid]['firmware'])))
+                status.values.append(KeyValue('Return Delay Time', str(self.motor_static_info[mid]['delay'])))
+                status.values.append(KeyValue('Minimum Voltage', str(self.motor_static_info[mid]['min_voltage'])))
+                status.values.append(KeyValue('Maximum Voltage', str(self.motor_static_info[mid]['max_voltage'])))
+                status.values.append(KeyValue('Minimum Position (CW)', str(self.motor_static_info[mid]['min_angle'])))
+                status.values.append(KeyValue('Maximum Position (CCW)', str(self.motor_static_info[mid]['max_angle'])))
+                
+                status.values.append(KeyValue('Goal', str(motor_state.goal)))
+                status.values.append(KeyValue('Position', str(motor_state.position)))
+                status.values.append(KeyValue('Error', str(motor_state.error)))
+                status.values.append(KeyValue('Velocity', str(motor_state.speed)))
+                status.values.append(KeyValue('Load', str(motor_state.load)))
+                status.values.append(KeyValue('Voltage', str(motor_state.voltage)))
+                status.values.append(KeyValue('Temperature', str(motor_state.temperature)))
+                status.values.append(KeyValue('Moving', str(motor_state.moving)))
+                
+                if motor_state.temperature > 76:
+                    status.level = DiagnosticStatus.ERROR
+                    status.message = 'OVERHEATING'
+                elif motor_state.temperature > 73:
+                    status.level = DiagnosticStatus.WARN
+                    status.message = 'VERY HOT'
+                else:
+                    status.level = DiagnosticStatus.OK
+                    status.message = 'OK'
+                    
+                diag_msg.status.append(status)
+                
+            self.diagnostics_pub.publish(diag_msg)
             rate.sleep()
 
 if __name__ == '__main__':

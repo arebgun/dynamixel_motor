@@ -1,12 +1,12 @@
 <package>
     <description brief="Python drivers for Robotis Dynamixel servos">
-        This package provides low level IO for Robotis Dynamixel servos. 
-        Fully supports and was tested with AX-12+, RX-28, RX-64, EX-106+
-        models. Hardware specific constants are defined for  reading and
-        writing information from/to Dynamixel servos. This low level
-        package won't be used directly by most users. The higher level
-        dynamixel_controllers and specific robot controllers use this
-        package.
+        This package provides low level IO for Robotis Dynamixel servos.
+        Fully supports and was tested with AX-12, AX-18, RX-24, RX-28,
+        MX-28, RX-64, EX-106 models. Hardware specific constants are
+        defined for reading and writing information from/to Dynamixel
+        servos. This low level package won't be used directly by most
+        ROS users. The higher level dynamixel_controllers and specific
+        robot joint controllers make use of this package.
     </description>
     <author>Antons Rebguns, Cody Jorgensen</author>
     <license>BSD</license>
@@ -14,6 +14,7 @@
     <url>http://ros.org/wiki/dynamixel_driver</url>
     
     <depend package="rospy"/>
+    <depend package="diagnostic_msgs"/>
     
     <rosdep name="pyserial"/>
 </package>

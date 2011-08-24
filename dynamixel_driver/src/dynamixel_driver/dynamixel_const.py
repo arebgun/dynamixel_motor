@@ -210,7 +210,7 @@ DXL_MODEL_TO_PARAMS = \
            'encoder_resolution': 4096,
            'range_degrees':      360.0,
            'torque_per_volt':    (24 * KGCM_TO_NM) / 12.0,         #  24 kg-cm @ 12V
-           'velocity_per_volt':  (54 * RPM_TO_RADSEC) / 12.0,      #  85 RPM @ 18.5V
+           'velocity_per_volt':  (54 * RPM_TO_RADSEC) / 12.0,      #  54 RPM @ 12.0V
          },
 }
 

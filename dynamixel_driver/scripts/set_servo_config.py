@@ -83,7 +83,7 @@ if __name__ == '__main__':
     port = options.port
     baudrate = options.baud
     motor_ids = args[1:]
-
+    
     try:
         dxl_io = dynamixel_io.DynamixelIO(port, baudrate)
     except dynamixel_io.SerialOpenError, soe:
@@ -93,24 +93,52 @@ if __name__ == '__main__':
             motor_id = int(motor_id)
             print 'Configuring Dynamixel motor with ID %d' % motor_id
             if dxl_io.ping(motor_id):
+                # check if baud rate needs to be changed
                 if options.baud_rate:
-                    print 'Setting baud rate to %d bps' % int(2000000.0/(options.baud_rate + 1))
+                    valid_rates = (1,3,4,7,9,16,34,103,207,250,251,252)
+                    
+                    if options.baud_rate not in valid_rates:
+                        print 'Requested baud rate is invalid, please use one of the following: %s' % str(valid_rates)
+                        
+                    if options.baud_rate <= 207:
+                        print 'Setting baud rate to %d bps' % int(2000000.0/(options.baud_rate + 1))
+                    elif options.baud_rate == 250:
+                        print 'Setting baud rate to %d bps' % 2250000
+                    elif options.baud_rate == 251:
+                        print 'Setting baud rate to %d bps' % 2500000
+                    elif options.baud_rate == 252:
+                        print 'Setting baud rate to %d bps' % 3000000
+                        
                     dxl_io.set_baud_rate(motor_id, options.baud_rate)
+                    
+                # check if return delay time needs to be changed
                 if options.return_delay:
-                    print 'Setting return delay time to %d us' % options.return_delay * 2
+                    if options.return_delay < 0 or options.return_delay > 254:
+                        print 'Requested return delay time is out of valie range (0 - 254)'
+                        
+                    print 'Setting return delay time to %d us' % (options.return_delay * 2)
                     dxl_io.set_return_delay_time(motor_id, options.return_delay)
+                    
+                # check if CW angle limit needs to be changed
                 if options.cw_angle_limit is not None:
                     print 'Setting CW angle limit to %d' % options.cw_angle_limit
                     dxl_io.set_angle_limit_cw(motor_id, options.cw_angle_limit)
+                    
+                # check if CCW angle limit needs to be changed
                 if options.ccw_angle_limit is not None:
                     print 'Setting CCW angle limit to %d' % options.ccw_angle_limit
                     dxl_io.set_angle_limit_ccw(motor_id, options.ccw_angle_limit)
+                    
+                # check if minimum voltage limit needs to be changed
                 if options.min_voltage_limit:
                     print 'Setting minimum voltage limit to %d' % options.min_voltage_limit
                     dxl_io.set_voltage_limit_min(motor_id, options.min_voltage_limit)
+                    
+                # check if maximum voltage limit needs to be changed
                 if options.max_voltage_limit:
                     print 'Setting maximum voltage limit to %d' % options.min_voltage_limit
                     dxl_io.set_voltage_limit_max(motor_id, options.max_voltage_limit)
+                    
                 print 'done'
             else:
                 print 'Unable to connect to Dynamixel motor with ID %d' % motor_id
