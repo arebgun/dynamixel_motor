@@ -14,5 +14,5 @@
     <depend stack="ros_comm" />
     <depend stack="common" />
     <depend stack="common_msgs" />
-    <depend stack="pr2_controllers" />
+    <depend stack="control" />
 </stack>

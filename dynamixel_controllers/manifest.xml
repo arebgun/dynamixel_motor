@@ -21,7 +21,7 @@
     <depend package="trajectory_msgs"/>
     <depend package="diagnostic_msgs"/>
     <depend package="dynamixel_msgs"/>
-    <depend package="pr2_controllers_msgs"/>
+    <depend package="control_msgs"/>
 </package>
 
 
