@@ -63,14 +63,25 @@ from dynamixel_msgs.msg import MotorState
 from dynamixel_msgs.msg import MotorStateList
 
 class SerialProxy():
-    def __init__(self, port_name='/dev/ttyUSB0', port_namespace='ttyUSB0', baud_rate='1000000', min_motor_id=1, max_motor_id=25, update_rate=5):
+    def __init__(self,
+                 port_name='/dev/ttyUSB0',
+                 port_namespace='ttyUSB0',
+                 baud_rate='1000000',
+                 min_motor_id=1,
+                 max_motor_id=25,
+                 update_rate=5,
+                 diagnostics_rate=1,
+                 error_level_temp=75,
+                 warn_level_temp=70):
         self.port_name = port_name
         self.port_namespace = port_namespace
         self.baud_rate = baud_rate
         self.min_motor_id = min_motor_id
         self.max_motor_id = max_motor_id
         self.update_rate = update_rate
-        self.diagnostics_rate = update_rate
+        self.diagnostics_rate = diagnostics_rate
+        self.error_level_temp = error_level_temp
+        self.warn_level_temp = warn_level_temp
         
         self.actual_rate = update_rate
         self.error_counts = {'non_fatal': 0, 'checksum': 0, 'dropped': 0}
@@ -89,7 +100,7 @@ class SerialProxy():
             
         self.running = True
         if self.update_rate > 0: Thread(target=self.__update_motor_states).start()
-        Thread(target=self.__publish_diagnostic_information).start()
+        if self.diagnostics_rate > 0: Thread(target=self.__publish_diagnostic_information).start()
 
     def disconnect(self):
         self.running = False
@@ -186,7 +197,7 @@ class SerialProxy():
         last_time = rospy.Time.now()
         
         rate = rospy.Rate(self.update_rate)
-        while self.running:
+        while not rospy.is_shutdown() and self.running:
             # get current state of all motors and publish to motor_states topic
             motor_states = []
             for motor_id in self.motors:
@@ -231,7 +242,7 @@ class SerialProxy():
         diag_msg = DiagnosticArray()
         
         rate = rospy.Rate(self.diagnostics_rate)
-        while self.running:
+        while not rospy.is_shutdown() and self.running:
             diag_msg.status = []
             diag_msg.header.stamp = rospy.Time.now()
             
@@ -280,10 +291,10 @@ class SerialProxy():
                 status.values.append(KeyValue('Temperature', str(motor_state.temperature)))
                 status.values.append(KeyValue('Moving', str(motor_state.moving)))
                 
-                if motor_state.temperature > 76:
+                if motor_state.temperature >= self.error_level_temp:
                     status.level = DiagnosticStatus.ERROR
                     status.message = 'OVERHEATING'
-                elif motor_state.temperature > 73:
+                elif motor_state.temperature >= self.warn_level_temp:
                     status.level = DiagnosticStatus.WARN
                     status.message = 'VERY HOT'
                 else:
