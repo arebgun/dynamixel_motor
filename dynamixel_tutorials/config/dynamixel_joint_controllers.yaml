@@ -4,9 +4,9 @@ pan_controller:
         module: joint_position_controller
         type: JointPositionController
     joint_name: pan_joint
-    joint_speed: 1.17
+    joint_speed: 2.0
     motor:
-        id: 15
+        id: 5
         init: 512
         min: 0
         max: 1023
@@ -17,9 +17,9 @@ tilt_controller:
         module: joint_position_controller
         type: JointPositionController
     joint_name: tilt_joint
-    joint_speed: 1.17
+    joint_speed: 2.0
     motor:
-        id: 16
+        id: 6
         init: 512
         min: 0
         max: 1023

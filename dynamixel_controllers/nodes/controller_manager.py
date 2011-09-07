@@ -73,7 +73,7 @@ class ControllerManager:
         self.waiting_meta_controllers = []
         self.controllers = {}
         self.serial_proxies = {}
-        self.update_rate = 5
+        self.diagnostics_rate = rospy.get_param('~diagnostics_rate', 1)
         
         manager_namespace = rospy.get_param('~namespace')
         serial_ports = rospy.get_param('~serial_ports')
@@ -84,8 +84,24 @@ class ControllerManager:
             min_motor_id = port_config['min_motor_id'] if 'min_motor_id' in port_config else 1
             max_motor_id = port_config['max_motor_id'] if 'max_motor_id' in port_config else 253
             update_rate = port_config['update_rate'] if 'update_rate' in port_config else 5
+            error_level_temp = 75
+            warn_level_temp = 70
             
-            serial_proxy = SerialProxy(port_name, port_namespace, baud_rate, min_motor_id, max_motor_id, update_rate)
+            if 'diagnostics' in port_config:
+                if 'error_level_temp' in port_config['diagnostics']:
+                    error_level_temp = port_config['diagnostics']['error_level_temp']
+                if 'warn_level_temp' in port_config['diagnostics']:
+                    warn_level_temp = port_config['diagnostics']['warn_level_temp']
+                    
+            serial_proxy = SerialProxy(port_name,
+                                       port_namespace,
+                                       baud_rate,
+                                       min_motor_id,
+                                       max_motor_id,
+                                       update_rate,
+                                       self.diagnostics_rate,
+                                       error_level_temp,
+                                       warn_level_temp)
             serial_proxy.connect()
             
             # will create a set of services for each serial port under common manager namesapce
@@ -98,7 +114,6 @@ class ControllerManager:
             rospy.Service('%s/%s/restart_controller' % (manager_namespace, port_namespace), RestartController, self.restart_controller)
             
             self.serial_proxies[port_namespace] = serial_proxy
-            self.update_rate = max(update_rate, self.update_rate)
             
         # services for 'meta' controllers, e.g. joint trajectory controller
         # these controllers don't have their own serial port, instead they rely
@@ -112,7 +127,7 @@ class ControllerManager:
         rospy.Service('%s/meta/restart_controller' % manager_namespace, RestartController, self.restart_controller)
         
         self.diagnostics_pub = rospy.Publisher('/diagnostics', DiagnosticArray)
-        Thread(target=self.diagnostics_processor).start()
+        if self.diagnostics_rate > 0: Thread(target=self.diagnostics_processor).start()
 
     def on_shutdown(self):
         for serial_proxy in self.serial_proxies.values():
@@ -121,7 +136,7 @@ class ControllerManager:
     def diagnostics_processor(self):
         diag_msg = DiagnosticArray()
         
-        rate = rospy.Rate(self.update_rate)
+        rate = rospy.Rate(self.diagnostics_rate)
         while not rospy.is_shutdown():
             diag_msg.status = []
             diag_msg.header.stamp = rospy.Time.now()
@@ -142,16 +157,8 @@ class ControllerManager:
                     status.values.append(KeyValue('Load', str(joint_state.load)))
                     status.values.append(KeyValue('Moving', str(joint_state.is_moving)))
                     status.values.append(KeyValue('Temperature', str(max_temp)))
-                    
-                    if max_temp > 76:
-                        status.level = DiagnosticStatus.ERROR
-                        status.message = 'OVERHEATING'
-                    elif max_temp > 73:
-                        status.level = DiagnosticStatus.WARN
-                        status.message = 'VERY HOT'
-                    else:
-                        status.level = DiagnosticStatus.OK
-                        status.message = 'OK'
+                    status.level = DiagnosticStatus.OK
+                    status.message = 'OK'
                         
                     diag_msg.status.append(status)
                 except:
