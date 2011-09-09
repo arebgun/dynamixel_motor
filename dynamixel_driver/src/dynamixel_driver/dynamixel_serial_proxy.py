@@ -86,6 +86,7 @@ class SerialProxy():
         self.actual_rate = update_rate
         self.error_counts = {'non_fatal': 0, 'checksum': 0, 'dropped': 0}
         self.current_state = MotorStateList()
+        self.num_ping_retries = 5
         
         self.motor_states_pub = rospy.Publisher('motor_states/%s' % self.port_namespace, MotorStateList)
         self.diagnostics_pub = rospy.Publisher('/diagnostics', DiagnosticArray)
@@ -157,9 +158,10 @@ class SerialProxy():
         
         try:
             for motor_id in range(self.min_motor_id, self.max_motor_id + 1):
-                result = self.dxl_io.ping(motor_id)
-                if result: self.motors.append(motor_id)
-                
+                for trial in range(self.num_ping_retries):
+                    result = self.dxl_io.ping(motor_id)
+                    if result: self.motors.append(motor_id); break
+                    
             if self.motors:
                 rospy.loginfo('Found motors with IDs: %s.' % str(self.motors))
             else:
