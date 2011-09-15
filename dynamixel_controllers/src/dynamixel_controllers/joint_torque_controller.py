@@ -111,16 +111,18 @@ class JointTorqueController(JointController):
         
         return True
 
+    def spd_rad_to_raw(self, spd_rad):
+        if spd_rad < -self.joint_max_speed: spd_rad = -self.joint_max_speed
+        elif spd_rad > self.joint_max_speed: spd_rad = self.joint_max_speed
+        self.last_commanded_torque = spd_rad
+        return int(round(spd_rad / self.VELOCITY_PER_TICK))
+
     def set_torque_enable(self, torque_enable):
         mcv = (self.motor_id, torque_enable)
         self.dxl_io.set_multi_torque_enabled([mcv])
 
     def set_speed(self, speed):
-        if speed < -self.joint_max_speed: speed = -self.joint_max_speed
-        elif speed > self.joint_max_speed: speed = self.joint_max_speed
-        self.last_commanded_torque = speed
-        speed_raw = int(round(speed / self.VELOCITY_PER_TICK))
-        mcv = (self.motor_id, speed_raw)
+        mcv = (self.motor_id, self.spd_rad_to_raw(speed))
         self.dxl_io.set_multi_speed([mcv])
 
     def set_compliance_slope(self, slope):

@@ -601,7 +601,7 @@ class DynamixelIO(object):
         Set different punch values for multiple servos.
         NOTE: according to documentation, currently this value is not being used.
         Should be called as such:
-        set_multi_speed( ( (id1, punch1), (id2, punch2), (id3, punch3) ) )
+        set_multi_punch( ( (id1, punch1), (id2, punch2), (id3, punch3) ) )
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []
@@ -619,7 +619,7 @@ class DynamixelIO(object):
         """
         Set different positions for multiple servos.
         Should be called as such:
-        set_multi_servo_positions( ( (id1, position1), (id2, position2), (id3, position3) ) )
+        set_multi_position( ( (id1, position1), (id2, position2), (id3, position3) ) )
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []
@@ -665,7 +665,7 @@ class DynamixelIO(object):
         """
         Set different torque limits for multiple servos.
         Should be called as such:
-        set_multi_speed( ( (id1, torque1), (id2, torque2), (id3, torque3) ) )
+        set_multi_torque_limit( ( (id1, torque1), (id2, torque2), (id3, torque3) ) )
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []
@@ -683,7 +683,7 @@ class DynamixelIO(object):
         """
         Set different positions and speeds for multiple servos.
         Should be called as such:
-        set_multi_servo_speeds( ( (id1, position1, speed1), (id2, position2, speed2), (id3, position3, speed3) ) )
+        set_multi_position_and_speed( ( (id1, position1, speed1), (id2, position2, speed2), (id3, position3, speed3) ) )
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []

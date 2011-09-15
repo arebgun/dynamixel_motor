@@ -63,7 +63,6 @@ class JointTorqueControllerDualMotor(JointController):
         self.master_max_angle_raw = rospy.get_param(self.controller_namespace + '/motor_master/max')
         
         self.slave_id = rospy.get_param(self.controller_namespace + '/motor_slave/id')
-        self.slave_offset = rospy.get_param(self.controller_namespace + '/motor_slave/calibration_offset', 0)
         
         self.flipped = self.master_min_angle_raw > self.master_max_angle_raw
         self.last_commanded_torque = 0.0
