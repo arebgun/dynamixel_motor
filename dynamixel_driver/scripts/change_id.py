@@ -84,4 +84,3 @@ if __name__ == '__main__':
                 print 'ERROR: The motor did not respond to a ping to its new id.'
         else:
             print 'ERROR: The specified motor did not respond to id %d. Make sure to specify the correct baudrate.' % old_id
-

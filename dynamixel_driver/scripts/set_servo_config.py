@@ -112,7 +112,7 @@ if __name__ == '__main__':
                     dxl_io.set_baud_rate(motor_id, options.baud_rate)
                     
                 # check if return delay time needs to be changed
-                if options.return_delay:
+                if options.return_delay is not None:
                     if options.return_delay < 0 or options.return_delay > 254:
                         print 'Requested return delay time is out of valie range (0 - 254)'
                         
@@ -142,4 +142,3 @@ if __name__ == '__main__':
                 print 'done'
             else:
                 print 'Unable to connect to Dynamixel motor with ID %d' % motor_id
-
