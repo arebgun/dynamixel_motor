@@ -325,6 +325,17 @@ class DynamixelIO(object):
             self.exception_on_error(response[4], servo_id, 'setting CW and CCW angle limits to %d and %d' %(min_angle, max_angle))
         return response
 
+    def set_drive_mode(self, servo_id, is_slave=False, is_reverse=False):
+        """
+        Sets the drive mode for EX-106 motors
+        """
+        drive_mode = (is_slave << 1) + is_reverse
+        
+        response = self.write(servo_id, DXL_DRIVE_MODE, [drive_mode])
+        if response:
+            self.exception_on_error(response[4], servo_id, 'setting drive mode to %d' % drive_mode)
+        return response
+
     def set_voltage_limit_min(self, servo_id, min_voltage):
         """
         Set the minimum voltage limit.
@@ -749,6 +760,13 @@ class DynamixelIO(object):
         
         # return the data in a dictionary
         return {'min':cwLimit, 'max':ccwLimit}
+
+    def get_drive_mode(self, servo_id):
+        """ Reads the servo's drive mode. """
+        response = self.read(servo_id, DXL_DRIVE_MODE, 1)
+        if response:
+            self.exception_on_error(response[4], servo_id, 'fetching drive mode')
+        return response[5]
 
     def get_voltage_limits(self, servo_id):
         """
