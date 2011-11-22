@@ -102,7 +102,7 @@ class DynamixelIO(object):
             
         # verify checksum
         checksum = 255 - sum(data[2:-1]) % 256
-        if not checksum == data[-1]: raise ChecksumError(data, checksum)
+        if not checksum == data[-1]: raise ChecksumError(servo_id, data, checksum)
         
         return data
 
@@ -242,7 +242,7 @@ class DynamixelIO(object):
                 response.append(timestamp)
             except Exception, e:
                 response = []
-            
+                
         if response:
             self.exception_on_error(response[4], servo_id, 'ping')
         return response
@@ -882,10 +882,10 @@ class SerialOpenError(Exception):
         return self.message
 
 class ChecksumError(Exception):
-    def __init__(self, response, checksum):
+    def __init__(self, servo_id, response, checksum):
         Exception.__init__(self)
-        self.message = 'Checksum of %d does not match the checksum from servo of %d' \
-                       %(response[-1], checksum)
+        self.message = 'Checksum received from motor %d does not match the expected one (%d != %d)' \
+                       %(servo_id, response[-1], checksum)
         self.response_data = response
         self.expected_checksum = checksum
     def __str__(self):

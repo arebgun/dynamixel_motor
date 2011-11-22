@@ -113,6 +113,7 @@ class SerialProxy():
         """
         angles = self.dxl_io.get_angle_limits(motor_id)
         voltage = self.dxl_io.get_voltage(motor_id)
+        voltages = self.dxl_io.get_voltage_limits(motor_id)
         
         rospy.set_param('dynamixel/%s/%d/model_number' %(self.port_namespace, motor_id), model_number)
         rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
@@ -146,52 +147,64 @@ class SerialProxy():
         self.motor_static_info[motor_id]['delay'] = self.dxl_io.get_return_delay_time(motor_id)
         self.motor_static_info[motor_id]['min_angle'] = angles['min']
         self.motor_static_info[motor_id]['max_angle'] = angles['max']
-        
-        voltages = self.dxl_io.get_voltage_limits(motor_id)
         self.motor_static_info[motor_id]['min_voltage'] = voltages['min']
         self.motor_static_info[motor_id]['max_voltage'] = voltages['max']
 
     def __find_motors(self):
-        rospy.loginfo('Pinging motor IDs %d through %d...' % (self.min_motor_id, self.max_motor_id))
+        rospy.loginfo('%s: Pinging motor IDs %d through %d...' % (self.port_namespace, self.min_motor_id, self.max_motor_id))
         self.motors = []
         self.motor_static_info = {}
         
-        try:
-            for motor_id in range(self.min_motor_id, self.max_motor_id + 1):
-                for trial in range(self.num_ping_retries):
+        for motor_id in range(self.min_motor_id, self.max_motor_id + 1):
+            for trial in range(self.num_ping_retries):
+                try:
                     result = self.dxl_io.ping(motor_id)
-                    if result: self.motors.append(motor_id); break
+                except Exception as ex:
+                    rospy.logerr('Exception thrown while pinging motor %d - %s' % (motor_id, ex))
+                    continue
                     
-            if self.motors:
-                rospy.loginfo('Found motors with IDs: %s.' % str(self.motors))
-            else:
-                rospy.logfatal('No motors found, aborting.')
-                sys.exit(1)
-                
-            rospy.set_param('dynamixel/%s/connected_ids' % self.port_namespace, self.motors)
+                if result:
+                    self.motors.append(motor_id)
+                    break
+                    
+        if not self.motors:
+            rospy.logfatal('%s: No motors found.' % self.port_namespace)
+            sys.exit(1)
             
-            counts = {10: 0, 12: 0, 18: 0, 24: 0, 28: 0, 29: 0, 64: 0, 107: 0, 113: 0, 116: 0, 117: 0}
-            
-            for motor_id in self.motors:
-                model_number = self.dxl_io.get_model_number(motor_id)
+        counts = {10: 0, 12: 0, 18: 0, 24: 0, 28: 0, 29: 0, 64: 0, 107: 0, 113: 0, 116: 0, 117: 0}
+        
+        to_delete_if_error = []
+        for motor_id in self.motors:
+            for trial in range(self.num_ping_retries):
+                try:
+                    model_number = self.dxl_io.get_model_number(motor_id)
+                    self.__fill_motor_parameters(motor_id, model_number)
+                except Exception as ex:
+                    rospy.logerr('Exception thrown while getting attributes for motor %d - %s' % (motor_id, ex))
+                    if trial == self.num_ping_retries - 1: to_delete_if_error.append(motor_id)
+                    continue
+                    
                 counts[model_number] += 1
-                self.__fill_motor_parameters(motor_id, model_number)
+                break
                 
-            status_str = 'There are '
-            for model_number,count in counts.items():
-                if count: status_str += '%d %s, ' % (count, DXL_MODEL_TO_PARAMS[model_number]['name'])
+        for motor_id in to_delete_if_error:
+            self.motors.remove(motor_id)
+            
+        rospy.set_param('dynamixel/%s/connected_ids' % self.port_namespace, self.motors)
+        
+        status_str = '%s: Found %d motors - ' % (self.port_namespace, len(self.motors))
+        for model_number,count in counts.items():
+            if count:
+                model_name = DXL_MODEL_TO_PARAMS[model_number]['name']
+                status_str += '%d %s [' % (count, model_name)
                 
-            rospy.loginfo('%s servos connected' % status_str[:-2])
-            rospy.loginfo('Dynamixel Manager on port %s initialized' % self.port_name)
-        except dynamixel_io.FatalErrorCodeError, fece:
-            rospy.logfatal(fece)
-            signal_shutdown(fece)
-        except dynamixel_io.NonfatalErrorCodeError, nfece:
-            rospy.logwarn(nfece)
-        except dynamixel_io.ChecksumError, cse:
-            rospy.logwarn(cse)
-        except dynamixel_io.DroppedPacketError, dpe:
-            rospy.loginfo(dpe.message)
+                for motor_id in self.motors:
+                    if self.motor_static_info[motor_id]['model'] == model_name:
+                        status_str += '%d, ' % motor_id
+                        
+                status_str = status_str[:-2] + '], '
+                
+        rospy.loginfo('%s, initialization complete.' % status_str[:-2])
 
     def __update_motor_states(self):
         num_events = 50
@@ -209,8 +222,7 @@ class SerialProxy():
                         motor_states.append(MotorState(**state))
                         if dynamixel_io.exception: raise dynamixel_io.exception
                 except dynamixel_io.FatalErrorCodeError, fece:
-                    rospy.logfatal(fece)
-                    rospy.signal_shutdown(fece)
+                    rospy.logerr(fece)
                 except dynamixel_io.NonfatalErrorCodeError, nfece:
                     self.error_counts['non_fatal'] += 1
                     rospy.logdebug(nfece)
