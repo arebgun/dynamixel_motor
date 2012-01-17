@@ -81,7 +81,7 @@ class ControllerManager:
         for port_namespace,port_config in serial_ports.items():
             port_name = port_config['port_name']
             baud_rate = port_config['baud_rate']
-            min_motor_id = port_config['min_motor_id'] if 'min_motor_id' in port_config else 1
+            min_motor_id = port_config['min_motor_id'] if 'min_motor_id' in port_config else 0
             max_motor_id = port_config['max_motor_id'] if 'max_motor_id' in port_config else 253
             update_rate = port_config['update_rate'] if 'update_rate' in port_config else 5
             error_level_temp = 75
