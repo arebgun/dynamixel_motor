@@ -12,7 +12,7 @@
 
     <depend stack="ros" />
     <depend stack="ros_comm" />
-    <depend stack="common" />
     <depend stack="common_msgs" />
+    <depend stack="actionlib" />
     <depend stack="control" />
 </stack>
