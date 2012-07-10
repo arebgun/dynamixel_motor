@@ -91,7 +91,7 @@ class DynamixelIO(object):
 
     def __read_response(self, servo_id):
         data = []
-        
+
         try:
             data.extend(self.ser.read(4))
             if not data[0:2] == ['\xff', '\xff']: raise Exception('Wrong packet prefix %s' % data[0:2])
@@ -99,45 +99,45 @@ class DynamixelIO(object):
             data = array('B', ''.join(data)).tolist() # [int(b2a_hex(byte), 16) for byte in data]
         except Exception, e:
             raise DroppedPacketError('Invalid response received from motor %d. %s' % (servo_id, e))
-            
+
         # verify checksum
         checksum = 255 - sum(data[2:-1]) % 256
         if not checksum == data[-1]: raise ChecksumError(servo_id, data, checksum)
-        
+
         return data
 
     def read(self, servo_id, address, size):
         """ Read "size" bytes of data from servo with "servo_id" starting at the
         register with "address". "address" is an integer between 0 and 57. It is
         recommended to use the constants in module dynamixel_const for readability.
-        
+
         To read the position from servo with id 1, the method should be called
         like:
             read(1, DXL_GOAL_POSITION_L, 2)
         """
         # Number of bytes following standard header (0xFF, 0xFF, id, length)
         length = 4  # instruction, address, size, checksum
-        
+
         # directly from AX-12 manual:
         # Check Sum = ~ (ID + LENGTH + INSTRUCTION + PARAM_1 + ... + PARAM_N)
         # If the calculated value is > 255, the lower byte is the check sum.
         checksum = 255 - ( (servo_id + length + DXL_READ_DATA + address + size) % 256 )
-        
+
         # packet: FF  FF  ID LENGTH INSTRUCTION PARAM_1 ... CHECKSUM
         packet = [0xFF, 0xFF, servo_id, length, DXL_READ_DATA, address, size, checksum]
         packetStr = array('B', packet).tostring() # same as: packetStr = ''.join([chr(byte) for byte in packet])
-        
+
         with self.serial_mutex:
             self.__write_serial(packetStr)
-            
+
             # wait for response packet from the motor
             timestamp = time.time()
             time.sleep(0.0013)#0.00235)
-            
+
             # read response
             data = self.__read_response(servo_id)
             data.append(timestamp)
-            
+
         return data
 
     def write(self, servo_id, address, data):
@@ -146,37 +146,37 @@ class DynamixelIO(object):
         "address" + (n-1), where n = len(data). "address" is an integer between
         0 and 49. It is recommended to use the constants in module dynamixel_const
         for readability. "data" is a list/tuple of integers.
-        
+
         To set servo with id 1 to position 276, the method should be called
         like:
             write(1, DXL_GOAL_POSITION_L, (20, 1))
         """
         # Number of bytes following standard header (0xFF, 0xFF, id, length)
         length = 3 + len(data)  # instruction, address, len(data), checksum
-        
+
         # directly from AX-12 manual:
         # Check Sum = ~ (ID + LENGTH + INSTRUCTION + PARAM_1 + ... + PARAM_N)
         # If the calculated value is > 255, the lower byte is the check sum.
         checksum = 255 - ((servo_id + length + DXL_WRITE_DATA + address + sum(data)) % 256)
-        
+
         # packet: FF  FF  ID LENGTH INSTRUCTION PARAM_1 ... CHECKSUM
         packet = [0xFF, 0xFF, servo_id, length, DXL_WRITE_DATA, address]
         packet.extend(data)
         packet.append(checksum)
-        
+
         packetStr = array('B', packet).tostring() # packetStr = ''.join([chr(byte) for byte in packet])
-        
+
         with self.serial_mutex:
             self.__write_serial(packetStr)
-            
+
             # wait for response packet from the motor
             timestamp = time.time()
             time.sleep(0.0013)
-            
+
             # read response
             data = self.__read_response(servo_id)
             data.append(timestamp)
-            
+
         return data
 
     def sync_write(self, address, data):
@@ -187,28 +187,28 @@ class DynamixelIO(object):
         tuples. Each tuple in "data" must contain the servo id followed by the
         data that should be written from the starting address. The amount of
         data can be as long as needed.
-        
+
         To set servo with id 1 to position 276 and servo with id 2 to position
         550, the method should be called like:
             sync_write(DXL_GOAL_POSITION_L, ( (1, 20, 1), (2 ,38, 2) ))
         """
         # Calculate length and sum of all data
         flattened = [value for servo in data for value in servo]
-        
+
         # Number of bytes following standard header (0xFF, 0xFF, id, length) plus data
         length = 4 + len(flattened)
-        
+
         checksum = 255 - ((DXL_BROADCAST + length + \
                           DXL_SYNC_WRITE + address + len(data[0][1:]) + \
                           sum(flattened)) % 256)
-                          
+
         # packet: FF  FF  ID LENGTH INSTRUCTION PARAM_1 ... CHECKSUM
         packet = [0xFF, 0xFF, DXL_BROADCAST, length, DXL_SYNC_WRITE, address, len(data[0][1:])]
         packet.extend(flattened)
         packet.append(checksum)
-        
+
         packetStr = array('B', packet).tostring() # packetStr = ''.join([chr(byte) for byte in packet])
-        
+
         with self.serial_mutex:
             self.__write_serial(packetStr)
 
@@ -219,30 +219,30 @@ class DynamixelIO(object):
         """
         # Number of bytes following standard header (0xFF, 0xFF, id, length)
         length = 2  # instruction, checksum
-        
+
         # directly from AX-12 manual:
         # Check Sum = ~ (ID + LENGTH + INSTRUCTION + PARAM_1 + ... + PARAM_N)
         # If the calculated value is > 255, the lower byte is the check sum.
         checksum = 255 - ((servo_id + length + DXL_PING) % 256)
-        
+
         # packet: FF  FF  ID LENGTH INSTRUCTION CHECKSUM
         packet = [0xFF, 0xFF, servo_id, length, DXL_PING, checksum]
         packetStr = array('B', packet).tostring()
-        
+
         with self.serial_mutex:
             self.__write_serial(packetStr)
-            
+
             # wait for response packet from the motor
             timestamp = time.time()
             time.sleep(0.0013)
-            
+
             # read response
             try:
                 response = self.__read_response(servo_id)
                 response.append(timestamp)
             except Exception, e:
                 response = []
-                
+
         if response:
             self.exception_on_error(response[4], servo_id, 'ping')
         return response
@@ -292,7 +292,7 @@ class DynamixelIO(object):
         """
         loVal = int(angle_cw % 256)
         hiVal = int(angle_cw >> 8)
-        
+
         response = self.write(servo_id, DXL_CW_ANGLE_LIMIT_L, (loVal, hiVal))
         if response:
             self.exception_on_error(response[4], servo_id, 'setting CW angle limits to %d' % angle_cw)
@@ -304,7 +304,7 @@ class DynamixelIO(object):
         """
         loVal = int(angle_ccw % 256)
         hiVal = int(angle_ccw >> 8)
-        
+
         response = self.write(servo_id, DXL_CCW_ANGLE_LIMIT_L, (loVal, hiVal))
         if response:
             self.exception_on_error(response[4], servo_id, 'setting CCW angle limits to %d' % angle_ccw)
@@ -318,7 +318,7 @@ class DynamixelIO(object):
         hiMinVal = int(min_angle >> 8)
         loMaxVal = int(max_angle % 256)
         hiMaxVal = int(max_angle >> 8)
-        
+
         # set 4 register values with low and high bytes for min and max angles
         response = self.write(servo_id, DXL_CW_ANGLE_LIMIT_L, (loMinVal, hiMinVal, loMaxVal, hiMaxVal))
         if response:
@@ -330,7 +330,7 @@ class DynamixelIO(object):
         Sets the drive mode for EX-106 motors
         """
         drive_mode = (is_slave << 1) + is_reverse
-        
+
         response = self.write(servo_id, DXL_DRIVE_MODE, [drive_mode])
         if response:
             self.exception_on_error(response[4], servo_id, 'setting drive mode to %d' % drive_mode)
@@ -341,10 +341,10 @@ class DynamixelIO(object):
         Set the minimum voltage limit.
         NOTE: the absolute min is 5v
         """
-        
+
         if min_voltage < 5: min_voltage = 5
         minVal = int(min_voltage * 10)
-        
+
         response = self.write(servo_id, DXL_DOWN_LIMIT_VOLTAGE, [minVal])
         if response:
             self.exception_on_error(response[4], servo_id, 'setting minimum voltage level to %d' % min_voltage)
@@ -355,10 +355,10 @@ class DynamixelIO(object):
         Set the maximum voltage limit.
         NOTE: the absolute min is 25v
         """
-        
+
         if max_voltage > 25: max_voltage = 25
         maxVal = int(max_voltage * 10)
-        
+
         response = self.write(servo_id, DXL_UP_LIMIT_VOLTAGE, [maxVal])
         if response:
             self.exception_on_error(response[4], servo_id, 'setting maximum voltage level to %d' % max_voltage)
@@ -369,13 +369,13 @@ class DynamixelIO(object):
         Set the min and max voltage limits.
         NOTE: the absolute min is 5v and the absolute max is 25v
         """
-        
+
         if min_voltage < 5: min_voltage = 5
         if max_voltage > 25: max_voltage = 25
-        
+
         minVal = int(min_voltage * 10)
         maxVal = int(max_voltage * 10)
-        
+
         response = self.write(servo_id, DXL_DOWN_LIMIT_VOLTAGE, (minVal, maxVal))
         if response:
             self.exception_on_error(response[4], servo_id, 'setting min and max voltage levels to %d and %d' %(min_voltage, max_voltage))
@@ -460,6 +460,36 @@ class DynamixelIO(object):
             self.exception_on_error(response[4], servo_id, 'setting CW and CCW compliance slopes to %d and %d' %(slope_cw, slope_ccw))
         return response
 
+    def set_d_gain(self, servo_id, d_gain):
+        """
+        Sets the value of derivative action of PID controller.
+        Gain value is in range 0 to 254.
+        """
+        response = self.write(servo_id, DXL_D_GAIN, [d_gain])
+        if response:
+            self.exception_on_error(response[4], servo_id, 'setting D gain value of PID controller to %d' % slope)
+        return response
+
+    def set_i_gain(self, servo_id, i_gain):
+        """
+        Sets the value of integral action of PID controller.
+        Gain value is in range 0 to 254.
+        """
+        response = self.write(servo_id, DXL_I_GAIN, [i_gain])
+        if response:
+            self.exception_on_error(response[4], servo_id, 'setting I gain value of PID controller to %d' % slope)
+        return response
+
+    def set_p_gain(self, servo_id, p_gain):
+        """
+        Sets the value of proportional action of PID controller.
+        Gain value is in range 0 to 254.
+        """
+        response = self.write(servo_id, DXL_P_GAIN, [p_gain])
+        if response:
+            self.exception_on_error(response[4], servo_id, 'setting P gain value of PID controller to %d' % slope)
+        return response
+
     def set_punch(self, servo_id, punch):
         """
         Sets the limit value of torque being reduced when the output torque is
@@ -481,7 +511,7 @@ class DynamixelIO(object):
         """
         loVal = int(position % 256)
         hiVal = int(position >> 8)
-        
+
         response = self.write(servo_id, DXL_GOAL_POSITION_L, (loVal, hiVal))
         if response:
             self.exception_on_error(response[4], servo_id, 'setting goal position to %d' % position)
@@ -499,7 +529,7 @@ class DynamixelIO(object):
         else:
             loVal = int((1023 - speed) % 256)
             hiVal = int((1023 - speed) >> 8)
-            
+
         # set two register values with low and high byte for the speed
         response = self.write(servo_id, DXL_GOAL_SPEED_L, (loVal, hiVal))
         if response:
@@ -515,7 +545,7 @@ class DynamixelIO(object):
         """
         loVal = int(torque % 256)
         hiVal = int(torque >> 8)
-        
+
         response = self.write(servo_id, DXL_TORQUE_LIMIT_L, (loVal, hiVal))
         if response:
             self.exception_on_error(response[4], servo_id, 'setting torque limit to %d' % torque)
@@ -533,11 +563,11 @@ class DynamixelIO(object):
         else:
             loSpeedVal = int((1023 - speed) % 256)
             hiSpeedVal = int((1023 - speed) >> 8)
-            
+
         # split position into 2 bytes
         loPositionVal = int(position % 256)
         hiPositionVal = int(position >> 8)
-        
+
         response = self.write(servo_id, DXL_GOAL_POSITION_L, (loPositionVal, hiPositionVal, loSpeedVal, hiSpeedVal))
         if response:
             self.exception_on_error(response[4], servo_id, 'setting goal position to %d and moving speed to %d' %(position, speed))
@@ -616,13 +646,13 @@ class DynamixelIO(object):
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []
-        
+
         for sid,punch in valueTuples:
             # split punch into 2 bytes
             loVal = int(punch % 256)
             hiVal = int(punch >> 8)
             writeableVals.append( (sid, loVal, hiVal) )
-            
+
         # use sync write to broadcast multi servo message
         self.sync_write(DXL_PUNCH_L, writeableVals)
 
@@ -634,7 +664,7 @@ class DynamixelIO(object):
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []
-        
+
         for vals in valueTuples:
             sid = vals[0]
             position = vals[1]
@@ -642,7 +672,7 @@ class DynamixelIO(object):
             loVal = int(position % 256)
             hiVal = int(position >> 8)
             writeableVals.append( (sid, loVal, hiVal) )
-            
+
         # use sync write to broadcast multi servo message
         self.sync_write(DXL_GOAL_POSITION_L, writeableVals)
 
@@ -654,11 +684,11 @@ class DynamixelIO(object):
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []
-        
+
         for vals in valueTuples:
             sid = vals[0]
             speed = vals[1]
-            
+
             # split speed into 2 bytes
             if speed >= 0:
                 loVal = int(speed % 256)
@@ -666,9 +696,9 @@ class DynamixelIO(object):
             else:
                 loVal = int((1023 - speed) % 256)
                 hiVal = int((1023 - speed) >> 8)
-                
+
             writeableVals.append( (sid, loVal, hiVal) )
-            
+
         # use sync write to broadcast multi servo message
         self.sync_write(DXL_GOAL_SPEED_L, writeableVals)
 
@@ -680,13 +710,13 @@ class DynamixelIO(object):
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []
-        
+
         for sid,torque in valueTuples:
             # split torque into 2 bytes
             loVal = int(torque % 256)
             hiVal = int(torque >> 8)
             writeableVals.append( (sid, loVal, hiVal) )
-            
+
         # use sync write to broadcast multi servo message
         self.sync_write(DXL_TORQUE_LIMIT_L, writeableVals)
 
@@ -698,12 +728,12 @@ class DynamixelIO(object):
         """
         # prepare value tuples for call to syncwrite
         writeableVals = []
-        
+
         for vals in valueTuples:
             sid = vals[0]
             position = vals[1]
             speed = vals[2]
-            
+
             # split speed into 2 bytes
             if speed >= 0:
                 loSpeedVal = int(speed % 256)
@@ -711,12 +741,12 @@ class DynamixelIO(object):
             else:
                 loSpeedVal = int((1023 - speed) % 256)
                 hiSpeedVal = int((1023 - speed) >> 8)
-                
+
             # split position into 2 bytes
             loPositionVal = int(position % 256)
             hiPositionVal = int(position >> 8)
             writeableVals.append( (sid, loPositionVal, hiPositionVal, loSpeedVal, hiSpeedVal) )
-            
+
         # use sync write to broadcast multi servo message
         self.sync_write(DXL_GOAL_POSITION_L, tuple(writeableVals))
 
@@ -757,7 +787,7 @@ class DynamixelIO(object):
         # extract data valus from the raw data
         cwLimit = response[5] + (response[6] << 8)
         ccwLimit = response[7] + (response[8] << 8)
-        
+
         # return the data in a dictionary
         return {'min':cwLimit, 'max':ccwLimit}
 
@@ -778,7 +808,7 @@ class DynamixelIO(object):
         # extract data valus from the raw data
         min_voltage = response[5] / 10.0
         max_voltage = response[6] / 10.0
-        
+
         # return the data in a dictionary
         return {'min':min_voltage, 'max':max_voltage}
 
@@ -849,7 +879,7 @@ class DynamixelIO(object):
         global exception
         exception = None
         ex_message = '[servo #%d on %s@%sbps]: %s failed' % (servo_id, self.ser.port, self.ser.baudrate, command_failed)
-        
+
         if not error_code & DXL_OVERHEATING_ERROR == 0:
             msg = 'Overheating Error ' + ex_message
             exception = FatalErrorCodeError(msg, error_code)
