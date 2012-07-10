@@ -149,68 +149,80 @@ DXL_MODEL_TO_PARAMS = \
     113: { 'name':               'DX-113',
            'encoder_resolution': 1024,
            'range_degrees':      300.0,
-           'torque_per_volt':    (10 * KGCM_TO_NM) / 12.0,         #  10 kg-cm @ 12V
+           'torque_per_volt':    1.0 / 12.0,                       #  1.0 NM @ 12V
            'velocity_per_volt':  (54 * RPM_TO_RADSEC) / 12.0,      #  54 RPM @ 12V
          },
     116: { 'name':               'DX-116',
            'encoder_resolution': 1024,
            'range_degrees':      300.0,
-           'torque_per_volt':    (21 * KGCM_TO_NM) / 12.0,         #  21 kg-cm @ 12V
+           'torque_per_volt':    2.1 / 12.0,                       #  2.1 NM @ 12V
            'velocity_per_volt':  (78 * RPM_TO_RADSEC) / 12.0,      #  78 RPM @ 12V
          },
     117: { 'name':               'DX-117',
            'encoder_resolution': 1024,
            'range_degrees':      300.0,
-           'torque_per_volt':    (37 * KGCM_TO_NM) / 18.5,         #  37 kg-cm @ 18.5V
+           'torque_per_volt':    3.7 / 18.5,                       #  3.7 NM @ 18.5V
            'velocity_per_volt':  (85 * RPM_TO_RADSEC) / 18.5,      #  85 RPM @ 18.5V
          },
-     12: { 'name':               'AX-12+',
+     12: { 'name':               'AX-12',
            'encoder_resolution': 1024,
            'range_degrees':      300.0,
-           'torque_per_volt':    (15 * KGCM_TO_NM) / 12.0,         #  15 kg-cm @ 12V
+           'torque_per_volt':    1.5 / 12.0,                       #  1.5 NM @ 12V
            'velocity_per_volt':  (59 * RPM_TO_RADSEC) / 12.0,      #  59 RPM @ 12V
          },
-     18: { 'name':               'AX-18F',
+     18: { 'name':               'AX-18',
            'encoder_resolution': 1024,
            'range_degrees':      300.0,
-           'torque_per_volt':    (18 * KGCM_TO_NM) / 12.0,         #  18 kg-cm @ 12V
+           'torque_per_volt':    1.8 / 12.0,                       #  1.8 NM @ 12V
            'velocity_per_volt':  (97 * RPM_TO_RADSEC) / 12.0,      #  97 RPM @ 12V
          },
      10: { 'name':               'RX-10',
            'encoder_resolution': 1024,
            'range_degrees':      300.0,
-           'torque_per_volt':    (13 * KGCM_TO_NM) / 12.0,         #  13 kg-cm @ 12V
+           'torque_per_volt':    1.3 / 12.0,                       #  1.3 NM @ 12V
            'velocity_per_volt':  (54 * RPM_TO_RADSEC) / 12.0,      #  54 RPM @ 12V
          },
-     24: { 'name':               'RX-24F',
+     24: { 'name':               'RX-24',
            'encoder_resolution': 1024,
            'range_degrees':      300.0,
-           'torque_per_volt':    (26 * KGCM_TO_NM) / 12.0,         #  26 kg-cm @ 12V
+           'torque_per_volt':    2.6 / 12.0,                       #  2.6 NM @ 12V
            'velocity_per_volt':  (126 * RPM_TO_RADSEC) / 12.0,     # 126 RPM @ 12V
          },
      28: { 'name':               'RX-28',
            'encoder_resolution': 1024,
            'range_degrees':      300.0,
-           'torque_per_volt':    (37 * KGCM_TO_NM) / 18.5,         #  37 kg-cm @ 18.5V
+           'torque_per_volt':    3.7 / 18.5,                       #  3.7 NM @ 18.5V
            'velocity_per_volt':  (85 * RPM_TO_RADSEC) / 18.5,      #  85 RPM @ 18.5V
          },
      64: { 'name':               'RX-64',
            'encoder_resolution': 1024,
            'range_degrees':      300.0,
-           'torque_per_volt':    (52 * KGCM_TO_NM) / 18.5,         #  52 kg-cm @ 18.5V
+           'torque_per_volt':    5.3 / 18.5,                       #  5.3 NM @ 18.5V
            'velocity_per_volt':  (64 * RPM_TO_RADSEC) / 18.5,      #  64 RPM @ 18.5V
          },
-    107: { 'name':               'EX-106+',
+    107: { 'name':               'EX-106',
            'encoder_resolution': 4096,
            'range_degrees':      250.92,
-           'torque_per_volt':    (107 * KGCM_TO_NM) / 18.5,        # 107 kg-cm @ 18.5V
+           'torque_per_volt':    10.9 / 18.5,                      # 10.9 NM @ 18.5V
            'velocity_per_volt':  (91 * RPM_TO_RADSEC) / 18.5,      #  91 RPM @ 18.5V
          },
      29: { 'name':               'MX-28',
            'encoder_resolution': 4096,
            'range_degrees':      360.0,
-           'torque_per_volt':    (24 * KGCM_TO_NM) / 12.0,         #  24 kg-cm @ 12V
-           'velocity_per_volt':  (54 * RPM_TO_RADSEC) / 12.0,      #  54 RPM @ 12.0V
+           'torque_per_volt':    2.5 / 12.0,                       #  2.5 NM @ 12V
+           'velocity_per_volt':  (55 * RPM_TO_RADSEC) / 12.0,      #  54 RPM @ 12.0V
+         },
+    310: { 'name':               'MX-64',
+           'encoder_resolution': 4096,
+           'range_degrees':      360.0,
+           'torque_per_volt':    6.0 / 12.0,                       #  6 NM @ 12V
+           'velocity_per_volt':  (63 * RPM_TO_RADSEC) / 12.0,      #  63 RPM @ 12.0V
+         },
+    320: { 'name':               'MX-106',
+           'encoder_resolution': 4096,
+           'range_degrees':      360.0,
+           'torque_per_volt':    8.4 / 12.0,                       #  8.4 NM @ 12V
+           'velocity_per_volt':  (45 * RPM_TO_RADSEC) / 12.0,      #  45 RPM @ 12.0V
          },
 }
 
