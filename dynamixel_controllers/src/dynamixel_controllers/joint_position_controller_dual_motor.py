@@ -129,16 +129,16 @@ class JointPositionControllerDual(JointController):
     def set_compliance_slope(self, slope):
         if slope < DXL_MIN_COMPLIANCE_SLOPE: slope = DXL_MIN_COMPLIANCE_SLOPE
         elif slope > DXL_MAX_COMPLIANCE_SLOPE: slope = DXL_MAX_COMPLIANCE_SLOPE
-        mcv_master = (self.master_id, slope)
-        mcv_slave = (self.slave_id, slope)
+        mcv_master = (self.master_id, slope, slope)
+        mcv_slave = (self.slave_id, slope, slope)
         self.dxl_io.set_multi_compliance_slopes([mcv_master, mcv_slave])
 
     def set_compliance_margin(self, margin):
         if margin < DXL_MIN_COMPLIANCE_MARGIN: margin = DXL_MIN_COMPLIANCE_MARGIN
         elif margin > DXL_MAX_COMPLIANCE_MARGIN: margin = DXL_MAX_COMPLIANCE_MARGIN
         else: margin = int(margin)
-        mcv_master = (self.master_id, margin)
-        mcv_slave = (self.slave_id, margin)
+        mcv_master = (self.master_id, margin, margin)
+        mcv_slave = (self.slave_id, margin, margin)
         self.dxl_io.set_multi_compliance_margins([mcv_master, mcv_slave])
 
     def set_compliance_punch(self, punch):

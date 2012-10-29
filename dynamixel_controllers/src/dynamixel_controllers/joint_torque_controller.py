@@ -128,14 +128,14 @@ class JointTorqueController(JointController):
     def set_compliance_slope(self, slope):
         if slope < DXL_MIN_COMPLIANCE_SLOPE: slope = DXL_MIN_COMPLIANCE_SLOPE
         elif slope > DXL_MAX_COMPLIANCE_SLOPE: slope = DXL_MAX_COMPLIANCE_SLOPE
-        mcv = (self.motor_id, slope)
+        mcv = (self.motor_id, slope, slope)
         self.dxl_io.set_multi_compliance_slopes([mcv])
 
     def set_compliance_margin(self, margin):
         if margin < DXL_MIN_COMPLIANCE_MARGIN: margin = DXL_MIN_COMPLIANCE_MARGIN
         elif margin > DXL_MAX_COMPLIANCE_MARGIN: margin = DXL_MAX_COMPLIANCE_MARGIN
         else: margin = int(margin)
-        mcv = (self.motor_id, margin)
+        mcv = (self.motor_id, margin, margin)
         self.dxl_io.set_multi_compliance_margins([mcv])
 
     def set_compliance_punch(self, punch):

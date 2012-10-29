@@ -132,7 +132,7 @@ DXL_NO_ERROR = 0
 DXL_MIN_COMPLIANCE_MARGIN = 0
 DXL_MAX_COMPLIANCE_MARGIN = 255
 
-DXL_MIN_COMPLIANCE_SLOPE = 0
+DXL_MIN_COMPLIANCE_SLOPE = 1
 DXL_MAX_COMPLIANCE_SLOPE = 254
 
 # These are guesses as Dynamixel documentation doesn't have any info about it

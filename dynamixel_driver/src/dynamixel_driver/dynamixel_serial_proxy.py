@@ -47,6 +47,7 @@ import sys
 import errno
 from collections import deque
 from threading import Thread
+from collections import defaultdict
 
 import roslib
 roslib.load_manifest('dynamixel_driver')
@@ -171,7 +172,7 @@ class SerialProxy():
             rospy.logfatal('%s: No motors found.' % self.port_namespace)
             sys.exit(1)
             
-        counts = {10: 0, 12: 0, 18: 0, 24: 0, 28: 0, 29: 0, 64: 0, 107: 0, 113: 0, 116: 0, 117: 0}
+        counts = defaultdict(int)
         
         to_delete_if_error = []
         for motor_id in self.motors:
