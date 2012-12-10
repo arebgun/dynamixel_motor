@@ -173,6 +173,12 @@ DXL_MODEL_TO_PARAMS = \
            'torque_per_volt':    1.5 / 12.0,                       #  1.5 NM @ 12V
            'velocity_per_volt':  (59 * RPM_TO_RADSEC) / 12.0,      #  59 RPM @ 12V
          },
+    300: { 'name':               'AX-12W',
+           'encoder_resolution': 1024,
+           'range_degrees':      300.0,
+           'torque_per_volt':    0.2 / 12.0,                       # 0.2 NM @ 12V
+           'velocity_per_volt':  (470 * RPM_TO_RADSEC) / 12.0,     # 470 RPM @ 12V
+         },
      18: { 'name':               'AX-18',
            'encoder_resolution': 1024,
            'range_degrees':      300.0,
