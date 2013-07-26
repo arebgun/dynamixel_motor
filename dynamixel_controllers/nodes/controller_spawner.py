@@ -46,12 +46,8 @@ import sys
 import os
 from optparse import OptionParser
 
-import roslib
-roslib.load_manifest('dynamixel_controllers')
-
-from roslib.packages import InvalidROSPkgException
-
 import rospy
+
 from dynamixel_controllers.srv import StartController
 from dynamixel_controllers.srv import StopController
 from dynamixel_controllers.srv import RestartController
@@ -62,15 +58,11 @@ parser = OptionParser()
 def manage_controller(controller_name, port_namespace, controller_type, command, deps, start, stop, restart):
     try:
         controller = rospy.get_param(controller_name + '/controller')
-        package_path = roslib.packages.get_pkg_dir(controller['package'])
-        package_path = os.path.join(package_path, 'src', controller['package'])
+        package_path = controller['package']
         module_name = controller['module']
         class_name = controller['type']
     except KeyError as ke:
         rospy.logerr('[%s] configuration error: could not find controller parameters on parameter server' % controller_name)
-        sys.exit(1)
-    except InvalidROSPkgException as pe:
-        rospy.logerr('[%s] configuration error: %s' % (controller_name, pe))
         sys.exit(1)
     except Exception as e:
         rospy.logerr('[%s]: %s' % (controller_name, e))

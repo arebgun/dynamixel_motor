@@ -45,9 +45,6 @@ __email__ = 'anton@email.arizona.edu'
 
 from threading import Thread
 
-import roslib
-roslib.load_manifest('dynamixel_controllers')
-
 import rospy
 import actionlib
 

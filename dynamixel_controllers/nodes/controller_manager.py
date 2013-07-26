@@ -47,9 +47,6 @@ from threading import Thread
 
 import sys
 
-import roslib
-roslib.load_manifest('dynamixel_controllers')
-
 import rospy
 
 from dynamixel_driver.dynamixel_serial_proxy import SerialProxy
@@ -191,17 +188,14 @@ class ControllerManager:
         if controller_name in self.controllers:
             return StartControllerResponse(False, 'Controller [%s] already started. If you want to restart it, call restart.' % controller_name)
             
-        # make sure the package_path is in PYTHONPATH
-        if not package_path in sys.path:
-            sys.path.append(package_path)
-            
         try:
             if module_name not in sys.modules:
                 # import if module not previously imported
-                controller_module = __import__(module_name)
+                package_module = __import__(package_path, globals(), locals(), [module_name], -1)
             else:
                 # reload module if previously imported
-                controller_module = reload(sys.modules[module_name])
+                package_module = reload(sys.modules[package_path])
+            controller_module = getattr(package_module, module_name)
         except ImportError, ie:
             return StartControllerResponse(False, 'Cannot find controller module. Unable to start controller %s\n%s' % (module_name, str(ie)))
         except SyntaxError, se:

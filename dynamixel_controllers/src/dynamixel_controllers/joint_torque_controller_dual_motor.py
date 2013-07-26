@@ -43,9 +43,6 @@ __maintainer__ = 'Antons Rebguns'
 __email__ = 'anton@email.arizona.edu'
 
 
-import roslib
-roslib.load_manifest('dynamixel_controllers')
-
 import rospy
 
 from dynamixel_driver.dynamixel_const import *
