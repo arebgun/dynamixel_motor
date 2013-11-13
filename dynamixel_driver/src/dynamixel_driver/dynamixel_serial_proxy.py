@@ -126,9 +126,10 @@ class SerialProxy():
         rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)
         
         velocity_per_volt = DXL_MODEL_TO_PARAMS[model_number]['velocity_per_volt']
+        rpm_per_tick = DXL_MODEL_TO_PARAMS[model_number]['rpm_per_tick']
         rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, motor_id), velocity_per_volt)
         rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, motor_id), velocity_per_volt * voltage)
-        rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), velocity_per_volt * voltage / DXL_MAX_SPEED_TICK)
+        rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), rpm_per_tick * RPM_TO_RADSEC)
         
         encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
         range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
