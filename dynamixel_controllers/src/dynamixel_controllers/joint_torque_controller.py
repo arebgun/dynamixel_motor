@@ -161,7 +161,7 @@ class JointTorqueController(JointController):
                 self.joint_state.goal_pos = self.last_commanded_torque
                 self.joint_state.current_pos = self.raw_to_rad(state.position, self.initial_position_raw, self.flipped, self.RADIANS_PER_ENCODER_TICK)
                 self.joint_state.error = 0.0
-                self.joint_state.velocity = (state.speed / DXL_MAX_SPEED_TICK) * self.MAX_VELOCITY
+                self.joint_state.velocity = state.speed * self.VELOCITY_PER_TICK
                 self.joint_state.load = state.load
                 self.joint_state.is_moving = state.moving
                 self.joint_state.header.stamp = rospy.Time.from_sec(state.timestamp)
