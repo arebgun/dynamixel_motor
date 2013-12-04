@@ -136,7 +136,7 @@ if __name__ == '__main__':
                     
                 # check if maximum voltage limit needs to be changed
                 if options.max_voltage_limit:
-                    print 'Setting maximum voltage limit to %d' % options.min_voltage_limit
+                    print 'Setting maximum voltage limit to %d' % options.max_voltage_limit
                     dxl_io.set_voltage_limit_max(motor_id, options.max_voltage_limit)
                     
                 print 'done'
