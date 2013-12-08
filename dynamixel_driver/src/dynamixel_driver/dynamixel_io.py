@@ -90,15 +90,33 @@ class DynamixelIO(object):
         self.ser.write(data)
 
     def __read_response(self, servo_id):
-        data = []
+        data = ''
+        print 'read_response'
+        # Read until packet header is found
+        read_size = 6
+        while read_size > 0:
+            buf = self.ser.read(read_size)
+            print 'buf', repr(buf)
+            if len(buf) < read_size:
+                if len(data) == 0:
+                    raise TimeoutError(servo_id)
+                else:
+                    raise CorruptError(servo_id)
+
+            data += buf
 
         try:
-            data.extend(self.ser.read(4))
-            if not data[0:2] == ['\xff', '\xff']: raise Exception('Wrong packet prefix %s' % data[0:2])
-            data.extend(self.ser.read(ord(data[3])))
+                header_index = data.index('\xff\xff')
+            except:
+                header_index = len(data)-1 if data[-1] == '\xff' else len(data)
+
+            data = data[header_index:]
+            read_size = header_index
+
+        data = list(data)
+        data.extend(self.ser.read(ord(data[3]) - 2))
+
             data = array('B', ''.join(data)).tolist() # [int(b2a_hex(byte), 16) for byte in data]
-        except Exception, e:
-            raise DroppedPacketError('Invalid response received from motor %d. %s' % (servo_id, e))
 
         # verify checksum
         checksum = 255 - sum(data[2:-1]) % 256
@@ -118,6 +136,9 @@ class DynamixelIO(object):
         # Number of bytes following standard header (0xFF, 0xFF, id, length)
         length = 4  # instruction, address, size, checksum
 
+        # Used to retry in case of invalid checksum
+        packet_read = False
+
         # directly from AX-12 manual:
         # Check Sum = ~ (ID + LENGTH + INSTRUCTION + PARAM_1 + ... + PARAM_N)
         # If the calculated value is > 255, the lower byte is the check sum.
@@ -125,8 +146,10 @@ class DynamixelIO(object):
 
         # packet: FF  FF  ID LENGTH INSTRUCTION PARAM_1 ... CHECKSUM
         packet = [0xFF, 0xFF, servo_id, length, DXL_READ_DATA, address, size, checksum]
+
         packetStr = array('B', packet).tostring() # same as: packetStr = ''.join([chr(byte) for byte in packet])
 
+        while not packet_read:
         with self.serial_mutex:
             self.__write_serial(packetStr)
 
@@ -134,9 +157,14 @@ class DynamixelIO(object):
             timestamp = time.time()
             time.sleep(0.0013)#0.00235)
 
+                try:
             # read response
             data = self.__read_response(servo_id)
             data.append(timestamp)
+
+                    packet_read = True
+                except (ChecksumError, CorruptError):
+                    pass
 
         return data
 
@@ -225,10 +253,14 @@ class DynamixelIO(object):
         # If the calculated value is > 255, the lower byte is the check sum.
         checksum = 255 - ((servo_id + length + DXL_PING) % 256)
 
+        # Used to retry in case of bad checksum
+        packet_read = False
+
         # packet: FF  FF  ID LENGTH INSTRUCTION CHECKSUM
         packet = [0xFF, 0xFF, servo_id, length, DXL_PING, checksum]
         packetStr = array('B', packet).tostring()
 
+        while not packet_read:
         with self.serial_mutex:
             self.__write_serial(packetStr)
 
@@ -240,8 +272,12 @@ class DynamixelIO(object):
             try:
                 response = self.__read_response(servo_id)
                 response.append(timestamp)
-            except Exception, e:
+                    packet_read = True
+                except TimeoutError:
                 response = []
+                    packet_read = True
+                except (ChecksumError, CorruptError):
+                    pass
 
         if response:
             self.exception_on_error(response[4], servo_id, 'ping')
@@ -911,6 +947,20 @@ class SerialOpenError(Exception):
     def __str__(self):
         return self.message
 
+class CorruptError(Exception):
+    def __init__(self, servo_id):
+        Exception.__init__(self)
+        self.message = 'Corrupted packet received from motor %d' %(servo_id)
+    def __str__(self):
+        return self.message
+
+class TimeoutError(Exception):
+    def __init__(self, servo_id):
+        Exception.__init__(self)
+        self.message = 'No packet received from motor %d' %(servo_id)
+    def __str__(self):
+        return self.message
+
 class ChecksumError(Exception):
     def __init__(self, servo_id, response, checksum):
         Exception.__init__(self)
@@ -942,13 +992,6 @@ class ErrorCodeError(Exception):
         Exception.__init__(self)
         self.message = message
         self.error_code = ec_const
-    def __str__(self):
-        return self.message
-
-class DroppedPacketError(Exception):
-    def __init__(self, message):
-        Exception.__init__(self)
-        self.message = message
     def __str__(self):
         return self.message
 

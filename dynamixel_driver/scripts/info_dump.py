@@ -109,6 +109,7 @@ if __name__ == '__main__':
         responses = 0
         print 'Pinging motors:'
         for motor_id in motor_ids:
+            try:
             motor_id = int(motor_id)
             print '%d ...' % motor_id,
             p = dxl_io.ping(motor_id)
@@ -132,6 +133,8 @@ if __name__ == '__main__':
                 print_data(values)
             else:
                 print 'error'
+            except Exception, e:
+                print 'error:', e
         if responses == 0:
             print 'ERROR: None of the specified motors responded. Make sure to specify the correct baudrate.'
 
