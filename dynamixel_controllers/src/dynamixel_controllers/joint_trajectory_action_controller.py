@@ -254,11 +254,20 @@ class JointTrajectoryActionController():
                     self.msg.desired.positions[j] = desired_position
                     self.msg.desired.velocities[j] = desired_velocity
                     
-                    motor_id = self.joint_to_controller[joint].motor_id
-                    pos = self.joint_to_controller[joint].pos_rad_to_raw(desired_position)
-                    spd = self.joint_to_controller[joint].spd_rad_to_raw(desired_velocity)
-                    
-                    vals.append((motor_id,pos,spd))
+                    # probably need a more elegant way of figuring out if we are dealing with a dual controller
+					if hasattr(self.joint_to_controller[joint], "master_id"):
+						master_id = self.joint_to_controller[joint].master_id
+						slave_id = self.joint_to_controller[joint].slave_id
+						master_pos, slave_pos = self.joint_to_controller[joint].pos_rad_to_raw(desired_position)
+						spd = self.joint_to_controller[joint].spd_rad_to_raw(desired_velocity)
+						
+						vals.append( (master_id, master_pos, spd) )
+						vals.append( (slave_id, slave_pos, spd) )
+                    else:
+						motor_id = self.joint_to_controller[joint].motor_id
+						pos = self.joint_to_controller[joint].pos_rad_to_raw(desired_position)
+						spd = self.joint_to_controller[joint].spd_rad_to_raw(desired_velocity)
+						vals.append((motor_id,pos,spd))
                     
                 multi_packet[port] = vals
                 

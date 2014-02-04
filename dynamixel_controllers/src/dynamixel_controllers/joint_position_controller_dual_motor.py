@@ -110,6 +110,21 @@ class JointPositionControllerDual(JointController):
         
         return True
 
+	def pos_rad_to_raw(self, pos_rad):
+		if pos_rad < self.master_min_angle: angle = self.master_min_angle
+		elif pos_rad > self.master_max_angle: angle = self.master_max_angle
+		mcv_master = (self.master_id, self.rad_to_raw(angle, self.master_initial_position_raw, self.flipped, self.ENCODER_TICKS_PER_RADIAN))
+		mcv_slave = [self.slave_id, self.MAX_POSITION - mcv_master[1] + self.slave_offset]
+		if mcv_slave[1] < 0: mcv_slave[1] = 0
+		elif mcv_slave[1] > self.MAX_POSITION: mcv_slave[1] = self.MAX_POSITION
+		return (mcv_master, mcv_slave)
+		
+	def spd_raw_to_raw(self, spd_rad):
+		if spd_rad < self.MIN_VELOCITY: spd_rad = self.MIN_VELOCITY
+        elif spd_rad > self.joint_max_speed: spd_rad = self.joint_max_speed
+        # velocity of 0 means maximum, make sure that doesn't happen
+        return max(1, int(round(spd_rad / self.VELOCITY_PER_TICK)))
+		
     def set_torque_enable(self, torque_enable):
         mcv_master = (self.master_id, torque_enable)
         mcv_slave = (self.slave_id, torque_enable)
