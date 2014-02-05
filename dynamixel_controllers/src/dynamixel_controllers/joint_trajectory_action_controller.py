@@ -268,7 +268,7 @@ class JointTrajectoryActionController():
                         spd = self.joint_to_controller[joint].spd_rad_to_raw(desired_velocity)
                         vals.append((motor_id, pos, spd))
                     
-            multi_packet[port] = vals
+                multi_packet[port] = vals
                 
             for port, vals in multi_packet.items():
                 self.port_to_io[port].set_multi_position_and_speed(vals)
