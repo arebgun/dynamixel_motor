@@ -110,21 +110,27 @@ class JointPositionControllerDual(JointController):
         
         return True
 
-	def pos_rad_to_raw(self, pos_rad):
-		if pos_rad < self.master_min_angle: angle = self.master_min_angle
-		elif pos_rad > self.master_max_angle: angle = self.master_max_angle
-		mcv_master = (self.master_id, self.rad_to_raw(angle, self.master_initial_position_raw, self.flipped, self.ENCODER_TICKS_PER_RADIAN))
-		mcv_slave = [self.slave_id, self.MAX_POSITION - mcv_master[1] + self.slave_offset]
-		if mcv_slave[1] < 0: mcv_slave[1] = 0
-		elif mcv_slave[1] > self.MAX_POSITION: mcv_slave[1] = self.MAX_POSITION
-		return (mcv_master, mcv_slave)
-		
-	def spd_raw_to_raw(self, spd_rad):
-		if spd_rad < self.MIN_VELOCITY: spd_rad = self.MIN_VELOCITY
-        elif spd_rad > self.joint_max_speed: spd_rad = self.joint_max_speed
+    def pos_rad_to_raw(self, angle):
+        if angle < self.master_min_angle: 
+            angle = self.master_min_angle
+        elif angle > self.master_max_angle: 
+            angle = self.master_max_angle
+        mcv_master = self.rad_to_raw(angle, self.master_initial_position_raw, self.flipped, self.ENCODER_TICKS_PER_RADIAN)
+        mcv_slave = self.MAX_POSITION - mcv_master + self.slave_offset
+        if mcv_slave < 0: 
+            mcv_slave = 0
+        elif mcv_slave > self.MAX_POSITION: 
+            mcv_slave = self.MAX_POSITION
+        return (mcv_master, mcv_slave)
+        
+    def spd_rad_to_raw(self, spd_rad):
+        if spd_rad < self.MIN_VELOCITY: 
+            spd_rad = self.MIN_VELOCITY
+        elif spd_rad > self.joint_max_speed: 
+            spd_rad = self.joint_max_speed
         # velocity of 0 means maximum, make sure that doesn't happen
         return max(1, int(round(spd_rad / self.VELOCITY_PER_TICK)))
-		
+        
     def set_torque_enable(self, torque_enable):
         mcv_master = (self.master_id, torque_enable)
         mcv_slave = (self.slave_id, torque_enable)
@@ -163,7 +169,7 @@ class JointPositionControllerDual(JointController):
 
     def set_torque_limit(self, max_torque):
         if max_torque > 1: max_torque = 1.0
-        elif max_torque < 0: max_torque = 0.0     # turn off motor torque
+        elif max_torque < 0: max_torque = 0.0  # turn off motor torque
         raw_torque_val = int(DXL_MAX_TORQUE_TICK * max_torque)
         mcv_master = (self.master_id, raw_torque_val)
         mcv_slave = (self.slave_id, raw_torque_val)
@@ -178,7 +184,7 @@ class JointPositionControllerDual(JointController):
                 
             if states:
                 state = states[self.master_id]
-                self.joint_state.motor_temps = [state.temperature, states[self.slave_id].temperature]
+                self.joint_state.motor_temps = [state.temperature]
                 self.joint_state.goal_pos = self.raw_to_rad(state.goal, self.master_initial_position_raw, self.flipped, self.RADIANS_PER_ENCODER_TICK)
                 self.joint_state.current_pos = self.raw_to_rad(state.position, self.master_initial_position_raw, self.flipped, self.RADIANS_PER_ENCODER_TICK)
                 self.joint_state.error = state.error * self.RADIANS_PER_ENCODER_TICK
@@ -198,4 +204,3 @@ class JointPositionControllerDual(JointController):
         if mcv_slave[1] < 0: mcv_slave[1] = 0
         elif mcv_slave[1] > self.MAX_POSITION: mcv_slave[1] = self.MAX_POSITION
         self.dxl_io.set_multi_position([mcv_master, mcv_slave])
-
