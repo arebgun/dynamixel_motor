@@ -181,10 +181,10 @@ class JointPositionControllerDual(JointController):
             
             for state in state_list.motor_states:
                 if state.id in [self.master_id, self.slave_id]: states[state.id] = state
-                
-            if states:
+                               
+            if self.master_id in states and self.slave_id in states:
                 state = states[self.master_id]
-                self.joint_state.motor_temps = [state.temperature]
+                self.joint_state.motor_temps = [state.temperature, states[self.slave_id].temperature]
                 self.joint_state.goal_pos = self.raw_to_rad(state.goal, self.master_initial_position_raw, self.flipped, self.RADIANS_PER_ENCODER_TICK)
                 self.joint_state.current_pos = self.raw_to_rad(state.position, self.master_initial_position_raw, self.flipped, self.RADIANS_PER_ENCODER_TICK)
                 self.joint_state.error = state.error * self.RADIANS_PER_ENCODER_TICK
@@ -192,7 +192,6 @@ class JointPositionControllerDual(JointController):
                 self.joint_state.load = state.load
                 self.joint_state.is_moving = state.moving
                 self.joint_state.header.stamp = rospy.Time.from_sec(state.timestamp)
-                
                 self.joint_state_pub.publish(self.joint_state)
 
     def process_command(self, msg):
