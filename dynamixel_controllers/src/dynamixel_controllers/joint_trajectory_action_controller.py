@@ -57,8 +57,8 @@ from control_msgs.msg import FollowJointTrajectoryResult
 
 class Segment():
     def __init__(self, num_joints):
-        self.start_time = 0.0                   # trajectory segment start time
-        self.duration = 0.0                     # trajectory segment duration
+        self.start_time = 0.0  # trajectory segment start time
+        self.duration = 0.0  # trajectory segment duration
         self.positions = [0.0] * num_joints
         self.velocities = [0.0] * num_joints
 
@@ -134,7 +134,7 @@ class JointTrajectoryActionController():
         if self.action_server.is_active(): self.action_server.set_preempted()
         
         while self.action_server.is_active():
-            sleep(0.01)
+            rospy.sleep(0.01)
             
         self.process_trajectory(msg)
 
@@ -162,13 +162,13 @@ class JointTrajectoryActionController():
         # correlate the joints we're commanding to the joints in the message
         # map from an index of joint in the controller to an index in the trajectory
         lookup = [traj.joint_names.index(joint) for joint in self.joint_names]
-        durations  = [0.0] * num_points
+        durations = [0.0] * num_points
         
         # find out the duration of each segment in the trajectory
         durations[0] = traj.points[0].time_from_start.to_sec()
         
         for i in range(1, num_points):
-            durations[i] = (traj.points[i].time_from_start - traj.points[i-1].time_from_start).to_sec()
+            durations[i] = (traj.points[i].time_from_start - traj.points[i - 1].time_from_start).to_sec()
             
         if not traj.points[0].positions:
             res = FollowJointTrajectoryResult(FollowJointTrajectoryResult.INVALID_GOAL)
@@ -239,14 +239,14 @@ class JointTrajectoryActionController():
                 
             multi_packet = {}
             
-            for port,joints in self.port_to_joints.items():
+            for port, joints in self.port_to_joints.items():
                 vals = []
                 
                 for joint in joints:
                     j = self.joint_names.index(joint)
                     
                     start_position = self.joint_states[joint].current_pos
-                    if seg != 0: start_position = trajectory[seg-1].positions[j]
+                    if seg != 0: start_position = trajectory[seg - 1].positions[j]
                         
                     desired_position = trajectory[seg].positions[j]
                     desired_velocity = max(self.min_velocity, abs(desired_position - start_position) / durations[seg])
@@ -254,15 +254,23 @@ class JointTrajectoryActionController():
                     self.msg.desired.positions[j] = desired_position
                     self.msg.desired.velocities[j] = desired_velocity
                     
-                    motor_id = self.joint_to_controller[joint].motor_id
-                    pos = self.joint_to_controller[joint].pos_rad_to_raw(desired_position)
-                    spd = self.joint_to_controller[joint].spd_rad_to_raw(desired_velocity)
-                    
-                    vals.append((motor_id,pos,spd))
+                    # probably need a more elegant way of figuring out if we are dealing with a dual controller
+                    if hasattr(self.joint_to_controller[joint], "master_id"):
+                        master_id = self.joint_to_controller[joint].master_id
+                        slave_id = self.joint_to_controller[joint].slave_id
+                        master_pos, slave_pos = self.joint_to_controller[joint].pos_rad_to_raw(desired_position)
+                        spd = self.joint_to_controller[joint].spd_rad_to_raw(desired_velocity)
+                        vals.append((master_id, master_pos, spd))
+                        vals.append((slave_id, slave_pos, spd))
+                    else:
+                        motor_id = self.joint_to_controller[joint].motor_id
+                        pos = self.joint_to_controller[joint].pos_rad_to_raw(desired_position)
+                        spd = self.joint_to_controller[joint].spd_rad_to_raw(desired_velocity)
+                        vals.append((motor_id, pos, spd))
                     
                 multi_packet[port] = vals
                 
-            for port,vals in multi_packet.items():
+            for port, vals in multi_packet.items():
                 self.port_to_io[port].set_multi_position_and_speed(vals)
                 
             while time < seg_end_times[seg]:
@@ -272,7 +280,7 @@ class JointTrajectoryActionController():
                     msg = 'New trajectory received. Aborting old trajectory.'
                     multi_packet = {}
                     
-                    for port,joints in self.port_to_joints.items():
+                    for port, joints in self.port_to_joints.items():
                         vals = []
                         
                         for joint in joints:
@@ -281,11 +289,11 @@ class JointTrajectoryActionController():
                             motor_id = self.joint_to_controller[joint].motor_id
                             pos = self.joint_to_controller[joint].pos_rad_to_raw(cur_pos)
                             
-                            vals.append((motor_id,pos))
+                            vals.append((motor_id, pos))
                             
                         multi_packet[port] = vals
                         
-                    for port,vals in multi_packet.items():
+                    for port, vals in multi_packet.items():
                         self.port_to_io[port].set_multi_position(vals)
                         
                     self.action_server.set_preempted(text=msg)
@@ -341,4 +349,3 @@ class JointTrajectoryActionController():
                 
             self.state_pub.publish(self.msg)
             rate.sleep()
-
