@@ -122,8 +122,8 @@ class JointTorqueControllerDualMotor(JointController):
         elif speed > self.joint_max_speed: speed = self.joint_max_speed
         self.last_commanded_torque = speed
         speed_raw = int(round(speed / self.VELOCITY_PER_TICK))
-        mcv_master = (self.master_id, speed_raw if speed_raw > 0 else 1)
-        mcv_slave = (self.slave_id, mcv_master[1])
+        mcv_master = (self.master_id, speed_raw)
+        mcv_slave = (self.slave_id, -mcv_master[1])
         self.dxl_io.set_multi_speed([mcv_master, mcv_slave])
 
 
