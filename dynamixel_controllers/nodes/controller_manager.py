@@ -43,7 +43,7 @@ __maintainer__ = 'Antons Rebguns'
 __email__ = 'anton@email.arizona.edu'
 
 
-from threading import Thread
+from threading import Thread, Lock
 
 import sys
 
@@ -72,6 +72,9 @@ class ControllerManager:
         self.serial_proxies = {}
         self.diagnostics_rate = rospy.get_param('~diagnostics_rate', 1)
         
+        self.start_controller_lock = Lock()
+        self.stop_controller_lock = Lock()
+
         manager_namespace = rospy.get_param('~namespace')
         serial_ports = rospy.get_param('~serial_ports')
         
@@ -185,6 +188,8 @@ class ControllerManager:
         class_name = req.class_name
         controller_name = req.controller_name
         
+        self.start_controller_lock.acquire()
+        
         if controller_name in self.controllers:
             return StartControllerResponse(False, 'Controller [%s] already started. If you want to restart it, call restart.' % controller_name)
             
@@ -220,19 +225,24 @@ class ControllerManager:
             self.controllers[controller_name] = controller
             
             self.check_deps()
+            self.start_controller_lock.release()
             
             return StartControllerResponse(True, 'Controller %s successfully started.' % controller_name)
         else:
+            self.start_controller_lock.release()
             return StartControllerResponse(False, 'Initialization failed. Unable to start controller %s' % controller_name)
 
     def stop_controller(self, req):
         controller_name = req.controller_name
+        self.stop_controller_lock.acquire()
         
         if controller_name in self.controllers:
             self.controllers[controller_name].stop()
             del self.controllers[controller_name]
+            self.stop_controller_lock.release()
             return StopControllerResponse(True, 'controller %s successfully stopped.' % controller_name)
         else:
+            self.self.stop_controller_lock.release()
             return StopControllerResponse(False, 'controller %s was not running.' % controller_name)
 
     def restart_controller(self, req):
