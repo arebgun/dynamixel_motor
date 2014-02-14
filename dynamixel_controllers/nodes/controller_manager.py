@@ -168,8 +168,11 @@ class ControllerManager:
             rate.sleep()
 
     def check_deps(self):
-        for controller_name,deps,kls in self.waiting_meta_controllers:
+        controllers_still_waiting = []
+        
+        for i,(controller_name,deps,kls) in enumerate(self.waiting_meta_controllers):
             if not set(deps).issubset(self.controllers.keys()):
+                controllers_still_waiting.append(self.waiting_meta_controllers[i])
                 rospy.logwarn('[%s] not all dependencies started, still waiting for %s...' % (controller_name, str(list(set(deps).difference(self.controllers.keys())))))
             else:
                 dependencies = [self.controllers[dep_name] for dep_name in deps]
@@ -179,7 +182,7 @@ class ControllerManager:
                     controller.start()
                     self.controllers[controller_name] = controller
                     
-                self.waiting_meta_controllers = self.waiting_meta_controllers[1:]
+        self.waiting_meta_controllers = controllers_still_waiting[:]
 
     def start_controller(self, req):
         port_name = req.port_name
