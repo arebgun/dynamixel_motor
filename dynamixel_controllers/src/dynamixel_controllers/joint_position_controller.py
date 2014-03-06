@@ -104,6 +104,8 @@ class JointPositionController(JointController):
         
         self.set_speed(self.joint_speed)
         
+        self.enabled = True
+        
         return True
 
     def pos_rad_to_raw(self, pos_rad):
@@ -120,6 +122,9 @@ class JointPositionController(JointController):
     def set_torque_enable(self, torque_enable):
         mcv = (self.motor_id, torque_enable)
         self.dxl_io.set_multi_torque_enabled([mcv])
+        
+    def set_enable(self, enable):
+        self.enabled = enable
 
     def set_speed(self, speed):
         mcv = (self.motor_id, self.spd_rad_to_raw(speed))
@@ -169,7 +174,8 @@ class JointPositionController(JointController):
                 self.joint_state_pub.publish(self.joint_state)
 
     def process_command(self, msg):
-        angle = msg.data
-        mcv = (self.motor_id, self.pos_rad_to_raw(angle))
-        self.dxl_io.set_multi_position([mcv])
+        if self.enabled:
+            angle = msg.data
+            mcv = (self.motor_id, self.pos_rad_to_raw(angle))
+            self.dxl_io.set_multi_position([mcv])
 
