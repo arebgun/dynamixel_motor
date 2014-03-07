@@ -158,6 +158,14 @@ class JointTrajectoryActionController():
             rospy.logerr(msg)
             self.action_server.set_aborted(text=msg)
             return
+        
+        # make sure none of the required servos is disabled
+        for joint in self.joint_names:
+            if not self.joint_to_controller[joint].enabled:
+                msg = 'At least one of the required servos is currently disabled'
+                rospy.logerr(msg)
+                self.action_server.set_aborted(text=msg) 
+                return               
             
         # correlate the joints we're commanding to the joints in the message
         # map from an index of joint in the controller to an index in the trajectory
