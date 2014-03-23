@@ -112,16 +112,18 @@ class JointPositionController(JointController):
         return self.rad_to_raw(pos_rad, self.initial_position_raw, self.flipped, self.ENCODER_TICKS_PER_RADIAN)
 
     def spd_rad_to_raw(self, spd_rad):
-        direction_flag = 0x0000 # Used when Endless Turn Mode
-        if spd_rad < 0:
-            if self.max_angle_raw == 0.0 and self.min_angle_raw == 0.0: # Endless Turn Mode
+        if self.max_angle_raw == 0.0 and self.min_angle_raw == 0.0: # Endless Turn Mode
+            direction_flag = 0x0000 # Used when Endless Turn Mode
+            if spd_rad < 0:
                 direction_flag = 0x0400
                 spd_rad = -spd_rad
-                
-        if spd_rad < self.MIN_VELOCITY: spd_rad = self.MIN_VELOCITY
-        elif spd_rad > self.joint_max_speed: spd_rad = self.joint_max_speed
-        # velocity of 0 means maximum, make sure that doesn't happen
-        return direction_flag | max(1, int(round(spd_rad / self.VELOCITY_PER_TICK)))
+            if spd_rad > self.joint_max_speed: spd_rad = self.joint_max_speed
+            return direction_flag | int(round(spd_rad / self.VELOCITY_PER_TICK))
+        else:
+            if spd_rad < self.MIN_VELOCITY: spd_rad = self.MIN_VELOCITY # In Endless Mode, Minimum speed is zero
+            elif spd_rad > self.joint_max_speed: spd_rad = self.joint_max_speed
+            # velocity of 0 means maximum, make sure that doesn't happen
+            return max(1, int(round(spd_rad / self.VELOCITY_PER_TICK)))
 
     def set_torque_enable(self, torque_enable):
         mcv = (self.motor_id, torque_enable)
