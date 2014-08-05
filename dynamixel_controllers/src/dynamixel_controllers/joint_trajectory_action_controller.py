@@ -119,7 +119,7 @@ class JointTrajectoryActionController():
         self.running = True
         
         self.command_sub = rospy.Subscriber(self.controller_namespace + '/command', JointTrajectory, self.process_command)
-        self.state_pub = rospy.Publisher(self.controller_namespace + '/state', FollowJointTrajectoryFeedback)
+        self.state_pub = rospy.Publisher(self.controller_namespace + '/state', FollowJointTrajectoryFeedback, queue_size = 'None')
         self.action_server = actionlib.SimpleActionServer(self.controller_namespace + '/follow_joint_trajectory',
                                                           FollowJointTrajectoryAction,
                                                           execute_cb=self.process_follow_trajectory,
