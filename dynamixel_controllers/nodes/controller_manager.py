@@ -194,6 +194,7 @@ class ControllerManager:
         self.start_controller_lock.acquire()
         
         if controller_name in self.controllers:
+            self.start_controller_lock.release()
             return StartControllerResponse(False, 'Controller [%s] already started. If you want to restart it, call restart.' % controller_name)
             
         try:
@@ -205,10 +206,13 @@ class ControllerManager:
                 package_module = reload(sys.modules[package_path])
             controller_module = getattr(package_module, module_name)
         except ImportError, ie:
+            self.start_controller_lock.release()
             return StartControllerResponse(False, 'Cannot find controller module. Unable to start controller %s\n%s' % (module_name, str(ie)))
         except SyntaxError, se:
+            self.start_controller_lock.release()
             return StartControllerResponse(False, 'Syntax error in controller module. Unable to start controller %s\n%s' % (module_name, str(se)))
         except Exception, e:
+            self.start_controller_lock.release()
             return StartControllerResponse(False, 'Unknown error has occured. Unable to start controller %s\n%s' % (module_name, str(e)))
         
         kls = getattr(controller_module, class_name)
@@ -216,9 +220,11 @@ class ControllerManager:
         if port_name == 'meta':
             self.waiting_meta_controllers.append((controller_name,req.dependencies,kls))
             self.check_deps()
+            self.start_controller_lock.release()
             return StartControllerResponse(True, '')
             
         if port_name != 'meta' and (port_name not in self.serial_proxies):
+            self.start_controller_lock.release()
             return StartControllerResponse(False, 'Specified port [%s] not found, available ports are %s. Unable to start controller %s' % (port_name, str(self.serial_proxies.keys()), controller_name))
             
         controller = kls(self.serial_proxies[port_name].dxl_io, controller_name, port_name)
