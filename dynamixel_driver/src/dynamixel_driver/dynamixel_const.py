@@ -226,6 +226,13 @@ DXL_MODEL_TO_PARAMS = \
            'velocity_per_volt':  (91 * RPM_TO_RADSEC) / 18.5,      #  91 RPM @ 18.5V
            'rpm_per_tick':       0.111
          },
+    360: { 'name':               'MX-12W',
+           'encoder_resolution': 4096,
+           'range_degrees':      360.0,
+           'torque_per_volt':    0.2 / 12.0,                        #  torque not specified!
+           'velocity_per_volt':  (470 * RPM_TO_RADSEC) / 12.0,      #  470 RPM @ 12.0V
+           'rpm_per_tick':       0.114
+         },
      29: { 'name':               'MX-28',
            'encoder_resolution': 4096,
            'range_degrees':      360.0,
