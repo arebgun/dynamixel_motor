@@ -73,7 +73,8 @@ class SerialProxy():
                  update_rate=5,
                  diagnostics_rate=1,
                  error_level_temp=75,
-                 warn_level_temp=70):
+                 warn_level_temp=70,
+                 readback_echo=False):
         self.port_name = port_name
         self.port_namespace = port_namespace
         self.baud_rate = baud_rate
@@ -83,6 +84,7 @@ class SerialProxy():
         self.diagnostics_rate = diagnostics_rate
         self.error_level_temp = error_level_temp
         self.warn_level_temp = warn_level_temp
+        self.readback_echo = readback_echo
         
         self.actual_rate = update_rate
         self.error_counts = {'non_fatal': 0, 'checksum': 0, 'dropped': 0}
@@ -94,7 +96,7 @@ class SerialProxy():
 
     def connect(self):
         try:
-            self.dxl_io = dynamixel_io.DynamixelIO(self.port_name, self.baud_rate)
+            self.dxl_io = dynamixel_io.DynamixelIO(self.port_name, self.baud_rate, self.readback_echo)
             self.__find_motors()
         except dynamixel_io.SerialOpenError, e:
             rospy.logfatal(e.message)

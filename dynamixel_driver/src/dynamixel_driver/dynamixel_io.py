@@ -59,7 +59,7 @@ class DynamixelIO(object):
     multi-servo instruction packet.
     """
 
-    def __init__(self, port, baudrate):
+    def __init__(self, port, baudrate, readback_echo=False):
         """ Constructor takes serial port and baudrate as arguments. """
         try:
             self.serial_mutex = Lock()
@@ -68,6 +68,7 @@ class DynamixelIO(object):
             self.ser.setTimeout(0.015)
             self.ser.baudrate = baudrate
             self.port_name = port
+            self.readback_echo = readback_echo
         except SerialOpenError:
            raise SerialOpenError(port, baudrate)
 
@@ -88,6 +89,8 @@ class DynamixelIO(object):
         self.ser.flushInput()
         self.ser.flushOutput()
         self.ser.write(data)
+        if self.readback_echo:
+            self.ser.read(len(data))
 
     def __read_response(self, servo_id):
         data = []
