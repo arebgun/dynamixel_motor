@@ -59,6 +59,10 @@ class JointPositionController(JointController):
         self.initial_position_raw = rospy.get_param(self.controller_namespace + '/motor/init')
         self.min_angle_raw = rospy.get_param(self.controller_namespace + '/motor/min')
         self.max_angle_raw = rospy.get_param(self.controller_namespace + '/motor/max')
+        if rospy.has_param(self.controller_namespace + '/motor/acceleration'):
+            self.acceleration = rospy.get_param(self.controller_namespace + '/motor/acceleration')
+        else:
+            self.acceleration = None
         
         self.flipped = self.min_angle_raw > self.max_angle_raw
         
@@ -93,7 +97,10 @@ class JointPositionController(JointController):
         if self.compliance_margin is not None: self.set_compliance_margin(self.compliance_margin)
         if self.compliance_punch is not None: self.set_compliance_punch(self.compliance_punch)
         if self.torque_limit is not None: self.set_torque_limit(self.torque_limit)
-        
+        if self.acceleration is not None:
+            rospy.loginfo("Setting acceleration of %d to %d" % (self.motor_id, self.acceleration))
+            self.dxl_io.set_acceleration(self.motor_id, self.acceleration)
+
         self.joint_max_speed = rospy.get_param(self.controller_namespace + '/joint_max_speed', self.MAX_VELOCITY)
         
         if self.joint_max_speed < self.MIN_VELOCITY: self.joint_max_speed = self.MIN_VELOCITY
@@ -151,6 +158,11 @@ class JointPositionController(JointController):
         raw_torque_val = int(DXL_MAX_TORQUE_TICK * max_torque)
         mcv = (self.motor_id, raw_torque_val)
         self.dxl_io.set_multi_torque_limit([mcv])
+
+    def set_acceleration_raw(self, acc):
+        if acc < 0: acc = 0
+        elif acc > 254: acc = 254
+        self.dxl_io.set_acceleration(self.motor_id, acc)
 
     def process_motor_states(self, state_list):
         if self.running:

@@ -504,6 +504,24 @@ class DynamixelIO(object):
             self.exception_on_error(response[4], servo_id, 'setting punch to %d' % punch)
         return response
 
+    def set_acceleration(self, servo_id, acceleration):
+        """
+        Sets the acceleration. The unit is 8.583 Degree / sec^2.
+        0 - acceleration control disabled, 1-254 - valid range for acceleration. 
+        """
+
+        model = self.get_model_number(servo_id)
+        if not model in DXL_MODEL_TO_PARAMS:
+            raise UnsupportedFeatureError(model, DXL_GOAL_ACCELERATION)
+
+        if DXL_GOAL_ACCELERATION in DXL_MODEL_TO_PARAMS[model]['features']:
+            response = self.write(servo_id, DXL_GOAL_ACCELERATION, (acceleration, ))
+            if response:
+                self.exception_on_error(response[4], servo_id, 'setting acceleration to %d' % acceleration)
+            return response
+        else:
+            raise UnsupportedFeatureError(model, DXL_GOAL_ACCELERATION)
+
     def set_position(self, servo_id, position):
         """
         Set the servo with servo_id to the specified goal position.
@@ -550,6 +568,34 @@ class DynamixelIO(object):
         if response:
             self.exception_on_error(response[4], servo_id, 'setting torque limit to %d' % torque)
         return response
+
+    def set_goal_torque(self, servo_id, torque):
+        """
+        Set the servo to torque control mode (similar to wheel mode, but controlling the torque)
+        Valid values are from -1023 to 1023.
+        Anything outside this range or 'None' disables torque control.
+        """
+
+        model = self.get_model_number(servo_id)
+        if not model in DXL_MODEL_TO_PARAMS:
+            raise UnsupportedFeatureError(model, DXL_TORQUE_CONTROL_MODE)
+
+        valid_torque = torque is not None and torque >= -1023 and torque <= 1023
+        if torque is not None and torque < 0:
+            torque = 1024 - torque
+
+        if DXL_TORQUE_CONTROL_MODE in DXL_MODEL_TO_PARAMS[model]['features']:
+            if valid_torque:
+                loVal = int(torque % 256); hiVal = int(torque >> 8);
+                response = self.write(servo_id, DXL_GOAL_TORQUE_L, (loVal, hiVal))
+                if response:
+                    self.exception_on_error(response[4], servo_id, 'setting goal torque to %d' % torque)
+            response = self.write(servo_id, DXL_TORQUE_CONTROL_MODE, (int(valid_torque), ))
+            if response:
+                self.exception_on_error(response[4], servo_id, 'enabling torque mode')
+            return response
+        else:
+            raise UnsupportedFeatureError(model, DXL_TORQUE_CONTROL_MODE)
 
     def set_position_and_speed(self, servo_id, position, speed):
         """
@@ -837,6 +883,30 @@ class DynamixelIO(object):
             self.exception_on_error(response[4], servo_id, 'fetching supplied voltage')
         return response[5] / 10.0
 
+    def get_current(self, servo_id):
+        """ Reads the servo's current consumption (if supported by model) """
+        model = self.get_model_number(servo_id)
+        if not model in DXL_MODEL_TO_PARAMS:
+            raise UnsupportedFeatureError(model, DXL_CURRENT_L)
+
+        if DXL_CURRENT_L in DXL_MODEL_TO_PARAMS[model]['features']:
+            response = self.read(servo_id, DXL_CURRENT_L, 2)
+            if response:
+                self.exception_on_error(response[4], servo_id, 'fetching sensed current')
+            current = response[5] + (response[6] << 8)
+            return 0.0045 * (current - 2048)
+
+        if DXL_SENSED_CURRENT_L in DXL_MODEL_TO_PARAMS[model]['features']:
+            response = self.read(servo_id, DXL_SENSED_CURRENT_L, 2)
+            if response:
+                self.exception_on_error(response[4], servo_id, 'fetching sensed current')
+            current = response[5] + (response[6] << 8)
+            return 0.01 * (current - 512)
+
+        else:
+            raise UnsupportedFeatureError(model, DXL_CURRENT_L)
+
+
     def get_feedback(self, servo_id):
         """
         Returns the id, goal, position, error, speed, load, voltage, temperature
@@ -949,6 +1019,17 @@ class DroppedPacketError(Exception):
     def __init__(self, message):
         Exception.__init__(self)
         self.message = message
+    def __str__(self):
+        return self.message
+
+class UnsupportedFeatureError(Exception):
+    def __init__(self, model_id, feature_id):
+        Exception.__init__(self)
+        if model_id in DXL_MODEL_TO_PARAMS:
+            model = DXL_MODEL_TO_PARAMS[model_id]['name']
+        else:
+            model = 'Unknown'
+        self.message = "Feature %d not supported by model %d (%s)" %(feature_id, model_id, model)
     def __str__(self):
         return self.message
 
