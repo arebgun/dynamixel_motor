@@ -106,7 +106,7 @@ class SerialProxy():
             self.dxl_io = dynamixel_io.DynamixelIO(
                 self.port_name, self.baud_rate, self.readback_echo)
             self.__find_motors()
-        except dynamixel_io.SerialOpenError, e:
+        except dynamixel_io.SerialOpenError as e:
             rospy.logfatal(e.message)
             sys.exit(1)
 
@@ -130,9 +130,9 @@ class SerialProxy():
 
         rospy.set_param('dynamixel/%s/%d/model_number' %
                         (self.port_namespace, motor_id), model_number)
-        rospy.set_param('dynamixel/{}/{}/model_name'.format(
-            self.port_namespace, motor_id),
-            DXL_MODEL_TO_PARAMS[model_number]['name'])
+        rospy.set_param('dynamixel/{}/{}/model_name'
+                        .format(self.port_namespace, motor_id),
+                        DXL_MODEL_TO_PARAMS[model_number]['name'])
         rospy.set_param('dynamixel/%s/%d/min_angle' %
                         (self.port_namespace, motor_id), angles['min'])
         rospy.set_param('dynamixel/%s/%d/max_angle' %
@@ -265,7 +265,7 @@ class SerialProxy():
                         motor_states.append(MotorState(**state))
                         if dynamixel_io.exception:
                             raise dynamixel_io.exception
-                except dynamixel_io.FatalErrorCodeError, fece:
+                except dynamixel_io.FatalErrorCodeError as fece:
                     rospy.logerr(fece)
                     me = MotorError()
                     me.error_type = "FatalErrorCodeError"
@@ -274,16 +274,16 @@ class SerialProxy():
                     pub = rospy.Publisher(
                         'dynamixel_motor_errors', MotorError, queue_size=None)
                     pub.publish(me)
-                except dynamixel_io.NonfatalErrorCodeError, nfece:
+                except dynamixel_io.NonfatalErrorCodeError as nfece:
                     self.error_counts['non_fatal'] += 1
                     rospy.logdebug(nfece)
-                except dynamixel_io.ChecksumError, cse:
+                except dynamixel_io.ChecksumError as cse:
                     self.error_counts['checksum'] += 1
                     rospy.logdebug(cse)
-                except dynamixel_io.DroppedPacketError, dpe:
+                except dynamixel_io.DroppedPacketError as dpe:
                     self.error_counts['dropped'] += 1
                     rospy.logdebug(dpe.message)
-                except OSError, ose:
+                except OSError as ose:
                     if ose.errno != errno.EAGAIN:
                         rospy.logfatal(errno.errorcode[ose.errno])
                         rospy.signal_shutdown(errno.errorcode[ose.errno])
