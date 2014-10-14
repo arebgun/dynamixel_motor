@@ -60,6 +60,7 @@ from diagnostic_msgs.msg import DiagnosticArray
 from diagnostic_msgs.msg import DiagnosticStatus
 from diagnostic_msgs.msg import KeyValue
 
+from dynamixel_msgs.msg import MotorError
 from dynamixel_msgs.msg import MotorState
 from dynamixel_msgs.msg import MotorStateList
 
@@ -227,6 +228,12 @@ class SerialProxy():
                         if dynamixel_io.exception: raise dynamixel_io.exception
                 except dynamixel_io.FatalErrorCodeError, fece:
                     rospy.logerr(fece)
+                    me = MotorError()
+                    me.error_type = "FatalErrorCodeError"
+                    me.error_message = fece.message
+                    me.extra_info = fece.message.split(' ')[3][1:]
+                    pub = rospy.Publisher('dynamixel_motor_errors', MotorError, queue_size=None)
+                    pub.publish(me)
                 except dynamixel_io.NonfatalErrorCodeError, nfece:
                     self.error_counts['non_fatal'] += 1
                     rospy.logdebug(nfece)
