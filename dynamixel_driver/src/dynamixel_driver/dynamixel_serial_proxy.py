@@ -97,9 +97,12 @@ class SerialProxy():
         self.motor_states_pub = \
             rospy.Publisher('motor_states/{}'.format(self.port_namespace),
                             MotorStateList,
-                            queue_size=None)
+                            queue_size=3)
         self.diagnostics_pub = rospy.Publisher(
-            '/diagnostics', DiagnosticArray, queue_size=None)
+            '/diagnostics', DiagnosticArray, queue_size=3)
+
+        self.error_pub = rospy.Publisher(
+            'dynamixel_motor_errors', MotorError, queue_size=3)
 
     def connect(self):
         try:
@@ -263,9 +266,7 @@ class SerialProxy():
                     me.error_type = "FatalErrorCodeError"
                     me.error_message = fece.message
                     me.extra_info = fece.message.split(' ')[3][1:]
-                    pub = rospy.Publisher(
-                        'dynamixel_motor_errors', MotorError, queue_size=None)
-                    pub.publish(me)
+                    self.error_pub.publish(me)
                 except dynamixel_io.NonfatalErrorCodeError as nfece:
                     self.error_counts['non_fatal'] += 1
                     rospy.logdebug(nfece)
