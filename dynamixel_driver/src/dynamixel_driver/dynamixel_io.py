@@ -953,6 +953,10 @@ class DynamixelIO(object):
         exception = None
         ex_message = '[servo #%d on %s@%sbps]: %s failed' % (servo_id, self.ser.port, self.ser.baudrate, command_failed)
 
+        if not isinstance(error_code, int):
+            msg = 'Communcation Error ' + ex_message
+            exception = NonfatalErrorCodeError(msg, 0)
+            return
         if not error_code & DXL_OVERHEATING_ERROR == 0:
             msg = 'Overheating Error ' + ex_message
             exception = FatalErrorCodeError(msg, error_code)
