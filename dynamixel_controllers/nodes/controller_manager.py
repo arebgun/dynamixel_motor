@@ -46,10 +46,12 @@ __email__ = 'anton@email.arizona.edu'
 from threading import Thread, Lock
 
 import sys
+from optparse import OptionParser
 
 import rospy
 
 from dynamixel_driver.dynamixel_serial_proxy import SerialProxy
+from dynamixel_driver.dynamixel_dummy_proxy import DummyProxy
 
 from diagnostic_msgs.msg import DiagnosticArray
 from diagnostic_msgs.msg import DiagnosticStatus
@@ -263,6 +265,13 @@ class ControllerManager:
 
 if __name__ == '__main__':
     try:
+        usage_msg = 'Usage: %prog [options]'
+        parser = OptionParser(usage=usage_msg)
+        parser.add_option('-d', '--dummy', default=False,
+                          help='running manager in dummy mode, which did not connect to actual haradware device')
+        (options, args) = parser.parse_args(rospy.myargv()[1:])
+        if options.dummy:
+            SerialProxy = DummyProxy
         manager = ControllerManager()
         rospy.spin()
     except rospy.ROSInterruptException: pass
