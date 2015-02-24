@@ -1,0 +1,3 @@
+string error_type       # error type
+string error_message    # error message
+string extra_info       # extra info such a joint number, port...
