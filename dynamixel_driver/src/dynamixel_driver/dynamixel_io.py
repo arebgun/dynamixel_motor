@@ -510,7 +510,7 @@ class DynamixelIO(object):
     def set_acceleration(self, servo_id, acceleration):
         """
         Sets the acceleration. The unit is 8.583 Degree / sec^2.
-        0 - acceleration control disabled, 1-254 - valid range for acceleration. 
+        0 - acceleration control disabled, 1-254 - valid range for acceleration.
         """
 
         model = self.get_model_number(servo_id)
@@ -620,6 +620,19 @@ class DynamixelIO(object):
         response = self.write(servo_id, DXL_GOAL_POSITION_L, (loPositionVal, hiPositionVal, loSpeedVal, hiSpeedVal))
         if response:
             self.exception_on_error(response[4], servo_id, 'setting goal position to %d and moving speed to %d' %(position, speed))
+        return response
+
+    def set_led(self, servo_id, led_state):
+        """
+        Turn the LED of servo motor on/off.
+        Possible boolean state values:
+            True - turn the LED on,
+            False - turn the LED off.
+        """
+        response = self.write(servo_id, DXL_LED, [led_state])
+        if response:
+            self.exception_on_error(response[4], servo_id,
+                    'setting a LED to %s' % led_state)
         return response
 
 
@@ -947,6 +960,20 @@ class DynamixelIO(object):
                      'voltage': voltage,
                      'temperature': temperature,
                      'moving': bool(moving) }
+
+    def get_led(self, servo_id):
+        """
+        Get status of the LED. Boolean return values:
+            True - LED is on,
+            False - LED is off.
+        """
+        response = self.read(servo_id, DXL_LED, 1)
+        if response:
+            self.exception_on_error(response[4], servo_id,
+                'fetching LED status')
+
+        return bool(response[5])
+
 
     def exception_on_error(self, error_code, servo_id, command_failed):
         global exception
