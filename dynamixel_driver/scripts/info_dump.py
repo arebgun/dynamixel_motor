@@ -133,5 +133,5 @@ if __name__ == '__main__':
             else:
                 print 'error'
         if responses == 0:
-            print 'ERROR: None of the specified motors responded. Make sure to specify the correct baudrate.'
+            print 'ERROR: None of the specified motors responded. Make sure to specify the correct baudrate, or the servo is powered.'
 
