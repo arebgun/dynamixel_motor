@@ -105,7 +105,7 @@ class JointController:
 
     def start(self):
         self.running = True
-        self.joint_state_pub = rospy.Publisher(self.controller_namespace + '/state', JointState, queue_size=None)
+        self.joint_state_pub = rospy.Publisher(self.controller_namespace + '/state', JointState, queue_size=1)
         self.command_sub = rospy.Subscriber(self.controller_namespace + '/command', Float64, self.process_command)
         self.motor_states_sub = rospy.Subscriber('motor_states/%s' % self.port_namespace, MotorStateList, self.process_motor_states)
 
