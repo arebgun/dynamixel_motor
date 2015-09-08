@@ -32,6 +32,7 @@
   <run_depend>dynamixel_msgs</run_depend>
   <run_depend>control_msgs</run_depend>
   <run_depend>dynamixel_driver</run_depend>
+  <run_depend>message_runtime</run_depend>
   
   <export>
 
