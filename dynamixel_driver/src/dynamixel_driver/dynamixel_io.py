@@ -64,10 +64,14 @@ class DynamixelIO(object):
         try:
             self.serial_mutex = Lock()
             self.ser = None
+            """ 
             self.ser = serial.Serial(port)
             self.ser.setTimeout(0.015)
             self.ser.baudrate = baudrate
             self.port_name = port
+            """
+            #To add
+            self.ser = serial.Serial(port,baudrate,timeout=0.04)
             self.readback_echo = readback_echo
         except SerialOpenError:
            raise SerialOpenError(port, baudrate)
