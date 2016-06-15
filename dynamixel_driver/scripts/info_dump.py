@@ -118,6 +118,7 @@ if __name__ == '__main__':
                 angles = dxl_io.get_angle_limits(motor_id)
                 model = dxl_io.get_model_number(motor_id)
                 firmware = dxl_io.get_firmware_version(motor_id)
+                print "Model: ", model
                 values['model'] = '%s (firmware version: %d)' % (DXL_MODEL_TO_PARAMS[model]['name'], firmware)
                 values['degree_symbol'] = u"\u00B0"
                 values['min'] = angles['min']

@@ -327,6 +327,18 @@ class DynamixelIO(object):
             self.exception_on_error(response[4], servo_id, 'setting CW and CCW angle limits to %d and %d' %(min_angle, max_angle))
         return response
 
+    def set_mode_wheel(self, servo_id):
+        """
+        Set wheel mode. Use set_angle_limits for joint mode.
+        """
+        return self.set_angle_limits(servo_id, 0, 0)
+
+    def set_mode_multiturn(self, servo_id):
+        """
+        Set multi-turn mode. Use set_angle_limits for joint mode.
+        """
+        return self.set_angle_limits(servo_id, 0x0fff, 0x0fff)
+
     def set_drive_mode(self, servo_id, is_slave=False, is_reverse=False):
         """
         Sets the drive mode for EX-106 motors
@@ -338,6 +350,31 @@ class DynamixelIO(object):
             self.exception_on_error(response[4], servo_id, 'setting drive mode to %d' % drive_mode)
         return response
 
+    def set_resolution_divider(self, servo_id, divider):
+        """
+        Set resolution divider. Valid range: 1 to 4
+        """
+        response = self.write(servo_id, DXL_RESOLUTION_DIVIDER, [divider])
+        if response:
+            self.exception_on_error(response[4], servo_id, 'setting resolution divider to %d' % divider)
+        return response
+
+
+
+    def set_multiturn_offset(self, servo_id, offset):
+        """
+        Set the multiturn offset
+        """
+
+        offset &= 0xffff
+
+        response = self.write(servo_id, DXL_MULTI_TURN_OFFSET_L, (int(offset % 256), int(offset >> 8)))
+        if response:
+            self.exception_on_error(response[4], servo_id, 'setting multiturn offset to %d' % offset)
+        return response
+
+
+    
     def set_voltage_limit_min(self, servo_id, min_voltage):
         """
         Set the minimum voltage limit.
@@ -529,6 +566,7 @@ class DynamixelIO(object):
         Set the servo with servo_id to the specified goal position.
         Position value must be positive.
         """
+        position &= 0xffff
         loVal = int(position % 256)
         hiVal = int(position >> 8)
 
@@ -613,6 +651,7 @@ class DynamixelIO(object):
             hiSpeedVal = int((1023 - speed) >> 8)
 
         # split position into 2 bytes
+        position &= 0xffff
         loPositionVal = int(position % 256)
         hiPositionVal = int(position >> 8)
 
@@ -717,6 +756,7 @@ class DynamixelIO(object):
             sid = vals[0]
             position = vals[1]
             # split position into 2 bytes
+            position &= 0xffff
             loVal = int(position % 256)
             hiVal = int(position >> 8)
             writeableVals.append( (sid, loVal, hiVal) )
@@ -791,6 +831,7 @@ class DynamixelIO(object):
                 hiSpeedVal = int((1023 - speed) >> 8)
 
             # split position into 2 bytes
+            position &= 0xffff
             loPositionVal = int(position % 256)
             hiPositionVal = int(position >> 8)
             writeableVals.append( (sid, loPositionVal, hiPositionVal, loSpeedVal, hiSpeedVal) )
@@ -866,6 +907,8 @@ class DynamixelIO(object):
         if response:
             self.exception_on_error(response[4], servo_id, 'fetching present position')
         position = response[5] + (response[6] << 8)
+        if position & 0x8000:
+            position += -0x10000
         return position
 
     def get_speed(self, servo_id):
@@ -923,6 +966,8 @@ class DynamixelIO(object):
             # extract data values from the raw data
             goal = response[5] + (response[6] << 8)
             position = response[11] + (response[12] << 8)
+            if position & 0x8000:
+                position += -0x10000
             error = position - goal
             speed = response[13] + ( response[14] << 8)
             if speed > 1023: speed = 1023 - speed
