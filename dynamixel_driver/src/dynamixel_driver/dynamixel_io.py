@@ -947,6 +947,31 @@ class DynamixelIO(object):
                      'temperature': temperature,
                      'moving': bool(moving) }
 
+    def get_load(self, servo_id):
+        """
+        Returns the present load value (raw, -1023 .. 1023) from the specified servo.
+        """
+        response = self.read(servo_id, DXL_PRESENT_LOAD_L, 2)
+        if response:
+            self.exception_on_error(response[4], servo_id, 'fetching moving status')
+
+        load_raw = response[5] + (response[6] << 8)
+        load = load_raw & 0x03ff
+        if self.test_bit(load_raw, 10): load *= -1
+
+        return load
+
+
+    def get_moving(self, servo_id):
+        """
+        Returns moving status
+        """
+        response = self.read(servo_id, DXL_MOVING, 1)
+
+        if response:
+            self.exception_on_error(response[4], servo_id, 'fetching moving status')
+        return bool(response[5])
+
     def exception_on_error(self, error_code, servo_id, command_failed):
         global exception
         exception = None
