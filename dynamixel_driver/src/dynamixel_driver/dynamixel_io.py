@@ -470,7 +470,7 @@ class DynamixelIO(object):
         """
         response = self.write(servo_id, DXL_D_GAIN, [d_gain])
         if response:
-            self.exception_on_error(response[4], servo_id, 'setting D gain value of PID controller to %d' % slope)
+            self.exception_on_error(response[4], servo_id, 'setting D gain value of PID controller to %d' % d_gain)
         return response
 
     def set_i_gain(self, servo_id, i_gain):
@@ -480,7 +480,7 @@ class DynamixelIO(object):
         """
         response = self.write(servo_id, DXL_I_GAIN, [i_gain])
         if response:
-            self.exception_on_error(response[4], servo_id, 'setting I gain value of PID controller to %d' % slope)
+            self.exception_on_error(response[4], servo_id, 'setting I gain value of PID controller to %d' % i_gain)
         return response
 
     def set_p_gain(self, servo_id, p_gain):
@@ -490,7 +490,7 @@ class DynamixelIO(object):
         """
         response = self.write(servo_id, DXL_P_GAIN, [p_gain])
         if response:
-            self.exception_on_error(response[4], servo_id, 'setting P gain value of PID controller to %d' % slope)
+            self.exception_on_error(response[4], servo_id, 'setting P gain value of PID controller to %d' % p_gain)
         return response
 
     def set_punch(self, servo_id, punch):
