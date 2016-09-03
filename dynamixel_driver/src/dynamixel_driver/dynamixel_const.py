@@ -235,7 +235,15 @@ DXL_MODEL_TO_PARAMS = \
            'rpm_per_tick':       0.111,
            'features':           []
          },
-    107: { 'name':               'EX-106',
+    106: { 'name':               'EX-106',
+           'encoder_resolution': 4096,
+           'range_degrees':      250.92,
+           'torque_per_volt':    10.9 / 18.5,                      # 10.9 NM @ 18.5V
+           'velocity_per_volt':  (91 * RPM_TO_RADSEC) / 18.5,      #  91 RPM @ 18.5V
+           'rpm_per_tick':       0.111,
+           'features':           [DXL_SENSED_CURRENT_L]
+         },     
+    107: { 'name':               'EX-106+',
            'encoder_resolution': 4096,
            'range_degrees':      250.92,
            'torque_per_volt':    10.9 / 18.5,                      # 10.9 NM @ 18.5V
