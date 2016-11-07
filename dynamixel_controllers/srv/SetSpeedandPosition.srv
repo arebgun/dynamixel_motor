@@ -1,0 +1,6 @@
+float64 speed
+float64 position
+float64 timeout
+---
+bool goal_reached
+

@@ -11,6 +11,7 @@ add_service_files(
   SetComplianceSlope.srv
   SetPosition.srv
   SetSpeed.srv
+  SetSpeedandPosition.srv
   SetTorqueLimit.srv
   StartController.srv
   StopController.srv
