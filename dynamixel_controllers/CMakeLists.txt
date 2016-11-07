@@ -9,6 +9,7 @@ add_service_files(
   SetComplianceMargin.srv
   SetCompliancePunch.srv
   SetComplianceSlope.srv
+  SetPosition.srv
   SetSpeed.srv
   SetTorqueLimit.srv
   StartController.srv
