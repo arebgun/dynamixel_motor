@@ -132,23 +132,21 @@ class JointPositionController(JointController):
         mcv = (self.motor_id, self.spd_rad_to_raw(speed))
         self.dxl_io.set_multi_speed([mcv])
 
-    def set_position(self, position, timeout=5.0):
+    def set_position(self, position):
         response = False
-        timeout = 5.0 if timeout < 5.0 	else timeout
         angle = position
         mcv = (self.motor_id, self.pos_rad_to_raw(angle))
         self.dxl_io.set_multi_position([mcv])
-        timer = 0.0
-        rospy.sleep(0.5)
 
-        while self.joint_state.is_moving and timer <= timeout:
-            timer += 0.1
+        # Without this small sleep we fail to get self.joint_state.is_moving as
+        # it is still False.
+        rospy.sleep(0.25)
+
+        while self.joint_state.is_moving:
             rospy.sleep(0.1)
 
-        diff = abs(self.joint_state.current_pos - position)
-        if diff < 0.1:
+        if abs(self.joint_state.current_pos - position) < 0.1:
             response = True
-        
         return response
 
     def set_compliance_slope(self, slope):

@@ -129,7 +129,7 @@ class JointController:
     def set_speed(self, speed):
         raise NotImplementedError
 
-    def set_position(self, position, timeout):
+    def set_position(self, position):
         raise NotImplementedError
 
     def set_compliance_slope(self, slope):
@@ -150,10 +150,10 @@ class JointController:
 
     def process_set_speed_and_position(self, req):
         self.set_speed(req.speed)
-        return self.set_position(req.position, req.timeout)
+        return self.set_position(req.position)
 
     def process_set_position(self, req):
-        return self.set_position(req.position, req.timeout)
+        return self.set_position(req.position)
 
     def process_torque_enable(self, req):
         self.set_torque_enable(req.torque_enable)
