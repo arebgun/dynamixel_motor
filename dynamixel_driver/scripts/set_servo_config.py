@@ -114,7 +114,7 @@ if __name__ == '__main__':
                 # check if return delay time needs to be changed
                 if options.return_delay is not None:
                     if options.return_delay < 0 or options.return_delay > 254:
-                        print 'Requested return delay time is out of valie range (0 - 254)'
+                        print 'Requested return delay time is out of valid range (0 - 254)'
                         
                     print 'Setting return delay time to %d us' % (options.return_delay * 2)
                     dxl_io.set_return_delay_time(motor_id, options.return_delay)
