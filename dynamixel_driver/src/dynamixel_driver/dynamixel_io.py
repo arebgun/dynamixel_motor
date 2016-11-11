@@ -563,8 +563,9 @@ class DynamixelIO(object):
     def set_position(self, servo_id, position):
         """
         Set the servo with servo_id to the specified goal position.
-        Position value must be positive.
+        Position can be negative only if the dynamixel is in "Multi-Turn" mode.
         """
+        position &= 0xffff
         loVal = int(position % 256)
         hiVal = int(position >> 8)
 
@@ -649,6 +650,7 @@ class DynamixelIO(object):
             hiSpeedVal = int((1023 - speed) >> 8)
 
         # split position into 2 bytes
+        position &= 0xffff
         loPositionVal = int(position % 256)
         hiPositionVal = int(position >> 8)
 
@@ -766,6 +768,7 @@ class DynamixelIO(object):
             sid = vals[0]
             position = vals[1]
             # split position into 2 bytes
+            position &= 0xffff
             loVal = int(position % 256)
             hiVal = int(position >> 8)
             writeableVals.append( (sid, loVal, hiVal) )
@@ -840,6 +843,7 @@ class DynamixelIO(object):
                 hiSpeedVal = int((1023 - speed) >> 8)
 
             # split position into 2 bytes
+            position &= 0xffff
             loPositionVal = int(position % 256)
             hiPositionVal = int(position >> 8)
             writeableVals.append( (sid, loPositionVal, hiPositionVal, loSpeedVal, hiSpeedVal) )
@@ -950,6 +954,8 @@ class DynamixelIO(object):
         if response:
             self.exception_on_error(response[4], servo_id, 'fetching present position')
         position = response[5] + (response[6] << 8)
+        if position & 0x8000:
+            position += -0x10000
         return position
 
     def get_speed(self, servo_id):
@@ -1007,6 +1013,8 @@ class DynamixelIO(object):
             # extract data values from the raw data
             goal = response[5] + (response[6] << 8)
             position = response[11] + (response[12] << 8)
+            if position & 0x8000:
+                position += -0x10000
             error = position - goal
             speed = response[13] + ( response[14] << 8)
             if speed > 1023: speed = 1023 - speed
