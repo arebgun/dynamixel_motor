@@ -69,6 +69,9 @@ DXL_DOWN_CALIBRATION_L = 20
 DXL_DOWN_CALIBRATION_H = 21
 DXL_UP_CALIBRATION_L = 22
 DXL_UP_CALIBRATION_H = 23
+DXL_MULTI_TURN_OFFSET_L = 20
+DXL_MULTI_TURN_OFFSET_H = 21
+DXL_RESOLUTION_DIVIDER = 22
 DXL_TORQUE_ENABLE = 24
 DXL_LED = 25
 DXL_CW_COMPLIANCE_MARGIN = 26
@@ -257,7 +260,7 @@ DXL_MODEL_TO_PARAMS = \
            'torque_per_volt':    0.2 / 12.0,                        #  torque not specified!
            'velocity_per_volt':  (470 * RPM_TO_RADSEC) / 12.0,      #  470 RPM @ 12.0V
            'rpm_per_tick':       0.114,
-           'features':           [DXL_GOAL_ACCELERATION]
+           'features':           [DXL_MULTI_TURN_OFFSET_L, DXL_RESOLUTION_DIVIDER, DXL_GOAL_ACCELERATION]
          },
      29: { 'name':               'MX-28',
            'encoder_resolution': 4096,
@@ -265,7 +268,7 @@ DXL_MODEL_TO_PARAMS = \
            'torque_per_volt':    2.5 / 12.0,                       #  2.5 NM @ 12V
            'velocity_per_volt':  (55 * RPM_TO_RADSEC) / 12.0,      #  54 RPM @ 12.0V
            'rpm_per_tick':       0.114,
-           'features':           [DXL_GOAL_ACCELERATION]
+           'features':           [DXL_MULTI_TURN_OFFSET_L, DXL_RESOLUTION_DIVIDER, DXL_GOAL_ACCELERATION]
          },
     310: { 'name':               'MX-64',
            'encoder_resolution': 4096,
@@ -273,7 +276,7 @@ DXL_MODEL_TO_PARAMS = \
            'torque_per_volt':    6.0 / 12.0,                       #  6 NM @ 12V
            'velocity_per_volt':  (63 * RPM_TO_RADSEC) / 12.0,      #  63 RPM @ 12.0V
            'rpm_per_tick':       0.114,
-           'features':           [DXL_CURRENT_L, DXL_TORQUE_CONTROL_MODE, DXL_GOAL_ACCELERATION]
+           'features':           [DXL_MULTI_TURN_OFFSET_L, DXL_RESOLUTION_DIVIDER, DXL_CURRENT_L, DXL_TORQUE_CONTROL_MODE, DXL_GOAL_ACCELERATION]
          },
     320: { 'name':               'MX-106',
            'encoder_resolution': 4096,
@@ -281,7 +284,7 @@ DXL_MODEL_TO_PARAMS = \
            'torque_per_volt':    8.4 / 12.0,                       #  8.4 NM @ 12V
            'velocity_per_volt':  (45 * RPM_TO_RADSEC) / 12.0,      #  45 RPM @ 12.0V
            'rpm_per_tick':       0.114,
-           'features':           [DXL_CURRENT_L, DXL_TORQUE_CONTROL_MODE, DXL_GOAL_ACCELERATION]
+           'features':           [DXL_MULTI_TURN_OFFSET_L, DXL_RESOLUTION_DIVIDER, DXL_CURRENT_L, DXL_TORQUE_CONTROL_MODE, DXL_GOAL_ACCELERATION]
          },
 }
 
