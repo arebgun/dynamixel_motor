@@ -144,6 +144,8 @@ DXL_MAX_COMPLIANCE_MARGIN = 255
 DXL_MIN_COMPLIANCE_SLOPE = 1
 DXL_MAX_COMPLIANCE_SLOPE = 254
 
+DXL_MULTI_TURN_RANGE_TICK = 57344           # angle range in encoder units in multi-turn mode
+
 # These are guesses as Dynamixel documentation doesn't have any info about it
 DXL_MIN_PUNCH = 0
 DXL_MAX_PUNCH = 255

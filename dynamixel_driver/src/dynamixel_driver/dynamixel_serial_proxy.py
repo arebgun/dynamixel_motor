@@ -136,6 +136,13 @@ class SerialProxy():
         encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
         range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
         range_radians = math.radians(range_degrees)
+        if angles['max'] == 4095 and angles['min'] == 4095:  # In multi-turn mode if the servo is MX motor
+            try:
+                resolution_divider = self.dxl_io.get_resolution_divider(motor_id)
+                range_degrees = (range_degrees / encoder_resolution) * resolution_divider * DXL_MULTI_TURN_RANGE_TICK
+                range_radians = math.radians(range_degrees)
+                encoder_resolution = DXL_MULTI_TURN_RANGE_TICK
+            except dynamixel_io.UnsupportedFeatureError: pass  # The servo is not MX motor
         rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, motor_id), encoder_resolution)
         rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, motor_id), range_degrees)
         rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, motor_id), range_radians)
