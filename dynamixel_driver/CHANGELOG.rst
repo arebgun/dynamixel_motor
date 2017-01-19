@@ -2,8 +2,8 @@
 Changelog for package dynamixel_driver
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.4.1 (2017-01-19)
+------------------
 * Don't set return delay time if value is invalid
 * Fix typo valie -> valid
 * Add EX-106, rename EX-106+ accordingly (Fixes `#60 <https://github.com/arebgun/dynamixel_motor/issues/60>`_)

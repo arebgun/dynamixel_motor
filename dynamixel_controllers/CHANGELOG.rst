@@ -2,8 +2,8 @@
 Changelog for package dynamixel_controllers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.4.1 (2017-01-19)
+------------------
 * bug fixes for issue `#33 <https://github.com/arebgun/dynamixel_motor/issues/33>`_ and warnnings on queue_size
 * Fixed syntax error due to missing parentheses
 * add error message when joint names did not match

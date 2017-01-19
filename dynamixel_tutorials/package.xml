@@ -1,6 +1,6 @@
 <package>
   <name>dynamixel_tutorials</name>
-  <version>0.4.0</version>
+  <version>0.4.1</version>
   <description>
     Example configuration and launch file for dynamixel_motor stack.
   </description>
