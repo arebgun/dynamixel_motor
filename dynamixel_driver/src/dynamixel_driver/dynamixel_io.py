@@ -1012,6 +1012,8 @@ class DynamixelIO(object):
         if len(response) == 24:
             # extract data values from the raw data
             goal = response[5] + (response[6] << 8)
+            if goal & 0x8000:
+                goal += -0x10000
             position = response[11] + (response[12] << 8)
             if position & 0x8000:
                 position += -0x10000
