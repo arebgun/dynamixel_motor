@@ -150,8 +150,8 @@ class JointTrajectoryActionController():
             res.error_code=FollowJointTrajectoryResult.INVALID_JOINTS
             msg = 'Incoming trajectory joints do not match the joints of the controller'
             rospy.logerr(msg)
-            rospy.logerr(' self.joint_names={}' % (set(self.joint_names)))
-            rospy.logerr(' traj.joint_names={}' % (set(traj.joint_names)))
+            rospy.logerr(' self.joint_names={%s}' % (set(self.joint_names)))
+            rospy.logerr(' traj.joint_names={%s}' % (set(traj.joint_names)))
             self.action_server.set_aborted(result=res, text=msg)
             return
             

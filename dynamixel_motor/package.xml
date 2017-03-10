@@ -1,6 +1,6 @@
 <package>
   <name>dynamixel_motor</name>
-  <version>0.4.0</version>
+  <version>0.4.1</version>
   <description>
     This stack contains packages that are used to interface with Robotis
     Dynamixel line of servo motors. This stack was tested with and fully
