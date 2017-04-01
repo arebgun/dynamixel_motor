@@ -1,0 +1,3 @@
+# On precise, for some reason, USER and GROUP are getting ignored.
+# So setting mode = 0666 for now.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{manufacturer}=="BestTechnology", MODE:="0666", GROUP:="dialout", SYMLINK+="dynamixel_motors"
