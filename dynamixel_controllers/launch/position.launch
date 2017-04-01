@@ -1,0 +1,9 @@
+<launch>
+    <!-- Start tilt joint controller -->
+    <rosparam file="$(find dynamixel_controllers)/launch/motor.yaml" command="load"/>
+    <node name="motor_controller_spawner" pkg="dynamixel_controllers" type="controller_spawner.py"
+          args="--manager=dxl_manager
+                --port ttyUSB0
+                motor_controller"
+          output="screen"/>
+</launch>
