@@ -70,6 +70,7 @@ class JointController:
         self.compliance_margin = rospy.get_param(self.controller_namespace + '/joint_compliance_margin', None)
         self.compliance_punch = rospy.get_param(self.controller_namespace + '/joint_compliance_punch', None)
         self.torque_limit = rospy.get_param(self.controller_namespace + '/joint_torque_limit', None)
+        self.ignored_errors = rospy.get_param(self.controller_namespace + '/ignored_errors', None)
         
         self.__ensure_limits()
         
@@ -134,6 +135,9 @@ class JointController:
         raise NotImplementedError
 
     def set_torque_limit(self, max_torque):
+        raise NotImplementedError
+
+    def set_ignored_errors(self, errs):
         raise NotImplementedError
 
     def process_set_speed(self, req):
