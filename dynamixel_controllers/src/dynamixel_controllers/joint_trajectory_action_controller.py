@@ -143,12 +143,13 @@ class JointTrajectoryActionController():
 
     def process_trajectory(self, traj):
         num_points = len(traj.points)
+        num_joints = len(traj.joint_names)
         
         # make sure the joints in the goal match the joints of the controller
-        if set(self.joint_names) != set(traj.joint_names):
+        if not set(traj.joint_names).issubset(set(self.joint_names)):
             res = FollowJointTrajectoryResult()
             res.error_code=FollowJointTrajectoryResult.INVALID_JOINTS
-            msg = 'Incoming trajectory joints do not match the joints of the controller'
+            msg = 'Incoming trajectory joints are not a subset of the joints of the controller'
             rospy.logerr(msg)
             rospy.logerr(' self.joint_names={%s}' % (set(self.joint_names)))
             rospy.logerr(' traj.joint_names={%s}' % (set(traj.joint_names)))
@@ -162,9 +163,6 @@ class JointTrajectoryActionController():
             self.action_server.set_aborted(text=msg)
             return
             
-        # correlate the joints we're commanding to the joints in the message
-        # map from an index of joint in the controller to an index in the trajectory
-        lookup = [traj.joint_names.index(joint) for joint in self.joint_names]
         durations = [0.0] * num_points
         
         # find out the duration of each segment in the trajectory
@@ -185,7 +183,7 @@ class JointTrajectoryActionController():
         time = rospy.Time.now() + rospy.Duration(0.01)
         
         for i in range(num_points):
-            seg = Segment(self.num_joints)
+            seg = Segment(num_joints)
             
             if traj.header.stamp == rospy.Time(0.0):
                 seg.start_time = (time + traj.points[i].time_from_start).to_sec() - durations[i]
@@ -195,7 +193,7 @@ class JointTrajectoryActionController():
             seg.duration = durations[i]
             
             # Checks that the incoming segment has the right number of elements.
-            if traj.points[i].velocities and len(traj.points[i].velocities) != self.num_joints:
+            if traj.points[i].velocities and len(traj.points[i].velocities) != num_joints:
                 res = FollowJointTrajectoryResult()
                 res.error_code=FollowJointTrajectoryResult.INVALID_GOAL
                 msg = 'Command point %d has %d elements for the velocities' % (i, len(traj.points[i].velocities))
@@ -203,7 +201,7 @@ class JointTrajectoryActionController():
                 self.action_server.set_aborted(result=res, text=msg)
                 return
                 
-            if len(traj.points[i].positions) != self.num_joints:
+            if len(traj.points[i].positions) != num_joints:
                 res = FollowJointTrajectoryResult()
                 res.error_code=FollowJointTrajectoryResult.INVALID_GOAL
                 msg = 'Command point %d has %d elements for the positions' % (i, len(traj.points[i].positions))
@@ -211,11 +209,11 @@ class JointTrajectoryActionController():
                 self.action_server.set_aborted(result=res, text=msg)
                 return
                 
-            for j in range(self.num_joints):
+            for j in range(num_joints):
                 if traj.points[i].velocities:
-                    seg.velocities[j] = traj.points[i].velocities[lookup[j]]
+                    seg.velocities[j] = traj.points[i].velocities[j]
                 if traj.points[i].positions:
-                    seg.positions[j] = traj.points[i].positions[lookup[j]]
+                    seg.positions[j] = traj.points[i].positions[j]
                     
             trajectory.append(seg)
             
@@ -234,6 +232,10 @@ class JointTrajectoryActionController():
         self.trajectory = trajectory
         traj_start_time = rospy.Time.now()
         
+        # correlate the joints we're commanding to the joints in the status message
+        # map from an index in the trajectory to the index of a joint in the controller
+        lookup = [self.joint_names.index(joint) for joint in traj.joint_names]
+
         for seg in range(len(trajectory)):
             rospy.logdebug('current segment is %d time left %f cur time %f' % (seg, durations[seg] - (time.to_sec() - trajectory[seg].start_time), time.to_sec()))
             rospy.logdebug('goal positions are: %s' % str(trajectory[seg].positions))
@@ -249,7 +251,11 @@ class JointTrajectoryActionController():
                 vals = []
                 
                 for joint in joints:
-                    j = self.joint_names.index(joint)
+                    try:
+                        j = traj.joint_names.index(joint)
+                    except ValueError:
+                        # this specific joint was not commanded. continue to next.
+                        continue
                     
                     start_position = self.joint_states[joint].current_pos
                     if seg != 0: start_position = trajectory[seg - 1].positions[j]
@@ -257,8 +263,8 @@ class JointTrajectoryActionController():
                     desired_position = trajectory[seg].positions[j]
                     desired_velocity = max(self.min_velocity, abs(desired_position - start_position) / durations[seg])
                     
-                    self.msg.desired.positions[j] = desired_position
-                    self.msg.desired.velocities[j] = desired_velocity
+                    self.msg.desired.positions[lookup[j]] = desired_position
+                    self.msg.desired.velocities[lookup[j]] = desired_velocity
                     
                     # probably need a more elegant way of figuring out if we are dealing with a dual controller
                     if hasattr(self.joint_to_controller[joint], "master_id"):
@@ -284,24 +290,6 @@ class JointTrajectoryActionController():
                 # by setting the goal to the current position
                 if self.action_server.is_preempt_requested():
                     msg = 'New trajectory received. Aborting old trajectory.'
-                    multi_packet = {}
-                    
-                    for port, joints in self.port_to_joints.items():
-                        vals = []
-                        
-                        for joint in joints:
-                            cur_pos = self.joint_states[joint].current_pos
-                            
-                            motor_id = self.joint_to_controller[joint].motor_id
-                            pos = self.joint_to_controller[joint].pos_rad_to_raw(cur_pos)
-                            
-                            vals.append((motor_id, pos))
-                            
-                        multi_packet[port] = vals
-                        
-                    for port, vals in multi_packet.items():
-                        self.port_to_io[port].set_multi_position(vals)
-                        
                     self.action_server.set_preempted(text=msg)
                     rospy.logwarn(msg)
                     return
@@ -310,12 +298,13 @@ class JointTrajectoryActionController():
                 time = rospy.Time.now()
                 
             # Verifies trajectory constraints
-            for j, joint in enumerate(self.joint_names):
-                if self.trajectory_constraints[j] > 0 and self.msg.error.positions[j] > self.trajectory_constraints[j]:
+            for j, joint in enumerate(traj.joint_names):
+                if (self.trajectory_constraints[lookup[j]] > 0 and
+                    self.msg.error.positions[lookup[j]] > self.trajectory_constraints[lookup[j]]):
                     res = FollowJointTrajectoryResult()
                     res.error_code=FollowJointTrajectoryResult.PATH_TOLERANCE_VIOLATED
                     msg = 'Unsatisfied position constraint for %s, trajectory point %d, %f is larger than %f' % \
-                           (joint, seg, self.msg.error.positions[j], self.trajectory_constraints[j])
+                           (joint, seg, self.msg.error.positions[lookup[j]], self.trajectory_constraints[lookup[j]])
                     rospy.logwarn(msg)
                     self.action_server.set_aborted(result=res, text=msg)
                     return
@@ -323,8 +312,10 @@ class JointTrajectoryActionController():
         # let motors roll for specified amount of time
         rospy.sleep(self.goal_time_constraint)
         
-        for i, j in enumerate(self.joint_names):
-            rospy.logdebug('desired pos was %f, actual pos is %f, error is %f' % (trajectory[-1].positions[i], self.joint_states[j].current_pos, self.joint_states[j].current_pos - trajectory[-1].positions[i]))
+        for j, joint in enumerate(traj.joint_names):
+            rospy.logdebug('desired pos was %f, actual pos is %f, error is %f' % (trajectory[-1].positions[j],
+                                                                                  self.joint_states[joint].current_pos,
+                                                                                  self.joint_states[joint].current_pos - trajectory[-1].positions[j]))
             
         # Checks that we have ended inside the goal constraints
         for (joint, pos_error, pos_constraint) in zip(self.joint_names, self.msg.error.positions, self.goal_constraints):
@@ -337,10 +328,10 @@ class JointTrajectoryActionController():
                 self.action_server.set_aborted(result=res, text=msg)
                 break
         else:
-	    msg = 'Trajectory execution successfully completed'
-	    rospy.loginfo(msg)
-	    res = FollowJointTrajectoryResult()  
-	    res.error_code=FollowJointTrajectoryResult.SUCCESSFUL
+            msg = 'Trajectory execution successfully completed'
+            rospy.loginfo(msg)
+            res = FollowJointTrajectoryResult()
+            res.error_code=FollowJointTrajectoryResult.SUCCESSFUL
             self.action_server.set_succeeded(result=res, text=msg)
 
     def update_state(self):
