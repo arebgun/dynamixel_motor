@@ -100,6 +100,9 @@ class JointTrajectoryActionController():
         for joint in self.joint_names:
             self.goal_constraints.append(rospy.get_param(ns + '/' + joint + '/goal', -1.0))
             self.trajectory_constraints.append(rospy.get_param(ns + '/' + joint + '/trajectory', -1.0))
+
+        self.cancel_prev_goals_on_preemption = \
+            rospy.get_param(self.controller_namespace + '/cancel_prev_goals_on_premption', True)
             
         # Message containing current state for all controlled joints
         self.msg = FollowJointTrajectoryFeedback()
@@ -290,6 +293,25 @@ class JointTrajectoryActionController():
                 # by setting the goal to the current position
                 if self.action_server.is_preempt_requested():
                     msg = 'New trajectory received. Aborting old trajectory.'
+                    if self.cancel_prev_goals_on_preemption:
+                        multi_packet = {}
+                        
+                        for port, joints in self.port_to_joints.items():
+                            vals = []
+                            
+                            for joint in joints:
+                                cur_pos = self.joint_states[joint].current_pos
+                                
+                                motor_id = self.joint_to_controller[joint].motor_id
+                                pos = self.joint_to_controller[joint].pos_rad_to_raw(cur_pos)
+                                
+                                vals.append((motor_id, pos))
+                                
+                            multi_packet[port] = vals
+                            
+                        for port, vals in multi_packet.items():
+                            self.port_to_io[port].set_multi_position(vals)
+                        
                     self.action_server.set_preempted(text=msg)
                     rospy.logwarn(msg)
                     return
