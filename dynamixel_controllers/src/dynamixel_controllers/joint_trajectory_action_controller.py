@@ -102,7 +102,7 @@ class JointTrajectoryActionController():
             self.trajectory_constraints.append(rospy.get_param(ns + '/' + joint + '/trajectory', -1.0))
 
         self.cancel_prev_goals_on_preemption = \
-            rospy.get_param(self.controller_namespace + '/cancel_prev_goals_on_premption', True)
+            rospy.get_param(self.controller_namespace + '/cancel_prev_goals_on_preemption', True)
             
         # Message containing current state for all controlled joints
         self.msg = FollowJointTrajectoryFeedback()
