@@ -161,6 +161,18 @@ class JointTrajectoryActionController():
             rospy.logerr(msg)
             self.action_server.set_aborted(text=msg)
             return
+        
+        # make sure the joints with enabled torque
+        multi_packet_torque={}
+        for port, joints in self.port_to_joints.items():
+            vals=[]
+            for joint in joints:
+                motor_id=self.joint_to_controller[joint].motor_id
+                vals.append((motor_id, True))
+            multi_packet_torque[port] = vals
+        
+        for port, vals in multi_packet_torque.items():
+            self.port_to_io[port].set_multi_torque_enabled(vals)
             
         # correlate the joints we're commanding to the joints in the message
         # map from an index of joint in the controller to an index in the trajectory
@@ -252,7 +264,6 @@ class JointTrajectoryActionController():
                     j = self.joint_names.index(joint)
                     
                     start_position = self.joint_states[joint].current_pos
-                    if seg != 0: start_position = trajectory[seg - 1].positions[j]
                         
                     desired_position = trajectory[seg].positions[j]
                     desired_velocity = max(self.min_velocity, abs(desired_position - start_position) / durations[seg])
