@@ -30,6 +30,7 @@ catkin_package(
   diagnostic_msgs
   dynamixel_msgs
   control_msgs
+  message_runtime
 )
 
 install(DIRECTORY launch
