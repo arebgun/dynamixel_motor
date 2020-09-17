@@ -116,11 +116,15 @@ class JointTorqueController(JointController):
 
     def set_torque_enable(self, torque_enable):
         mcv = (self.motor_id, torque_enable)
-        self.dxl_io.set_multi_torque_enabled([mcv])
+        self.dxl_io.set_multi_torque_enabled([mcv]) 
 
     def set_speed(self, speed):
         mcv = (self.motor_id, self.spd_rad_to_raw(speed))
         self.dxl_io.set_multi_speed([mcv])
+
+    def set_goal_torque(self,torque):
+        print torque
+        self.dxl_io.set_goal_torque(self.motor_id, int(torque))
 
     def set_compliance_slope(self, slope):
         if slope < DXL_MIN_COMPLIANCE_SLOPE: slope = DXL_MIN_COMPLIANCE_SLOPE
@@ -166,5 +170,5 @@ class JointTorqueController(JointController):
                 self.joint_state_pub.publish(self.joint_state)
 
     def process_command(self, msg):
-        self.set_speed(msg.data)
+        self.set_goal_torque(msg.data)
 
