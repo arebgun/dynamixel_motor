@@ -122,34 +122,40 @@ class SerialProxy():
         rospy.set_param('dynamixel/%s/%d/model_name' %(self.port_namespace, motor_id), DXL_MODEL_TO_PARAMS[model_number]['name'])
         rospy.set_param('dynamixel/%s/%d/min_angle' %(self.port_namespace, motor_id), angles['min'])
         rospy.set_param('dynamixel/%s/%d/max_angle' %(self.port_namespace, motor_id), angles['max'])
+
+        if 'torque_per_volt' in DXL_MODEL_TO_PARAMS[model_number]:
+            torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
+            rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
+            rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)
         
-        torque_per_volt = DXL_MODEL_TO_PARAMS[model_number]['torque_per_volt']
-        rospy.set_param('dynamixel/%s/%d/torque_per_volt' %(self.port_namespace, motor_id), torque_per_volt)
-        rospy.set_param('dynamixel/%s/%d/max_torque' %(self.port_namespace, motor_id), torque_per_volt * voltage)
+        if 'velocity_per_volt' in DXL_MODEL_TO_PARAMS[model_number]:
+            velocity_per_volt = DXL_MODEL_TO_PARAMS[model_number]['velocity_per_volt']
+            rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, motor_id), velocity_per_volt)
+            rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, motor_id), velocity_per_volt * voltage)
+
+        if 'rpm_per_tick' in DXL_MODEL_TO_PARAMS[model_number]:
+            rpm_per_tick = DXL_MODEL_TO_PARAMS[model_number]['rpm_per_tick']
+            rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), rpm_per_tick * RPM_TO_RADSEC)
         
-        velocity_per_volt = DXL_MODEL_TO_PARAMS[model_number]['velocity_per_volt']
-        rpm_per_tick = DXL_MODEL_TO_PARAMS[model_number]['rpm_per_tick']
-        rospy.set_param('dynamixel/%s/%d/velocity_per_volt' %(self.port_namespace, motor_id), velocity_per_volt)
-        rospy.set_param('dynamixel/%s/%d/max_velocity' %(self.port_namespace, motor_id), velocity_per_volt * voltage)
-        rospy.set_param('dynamixel/%s/%d/radians_second_per_encoder_tick' %(self.port_namespace, motor_id), rpm_per_tick * RPM_TO_RADSEC)
-        
-        encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
-        range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
-        range_radians = math.radians(range_degrees)
-        if angles['max'] == 4095 and angles['min'] == 4095:  # In multi-turn mode if the servo is MX motor
-            try:
-                resolution_divider = self.dxl_io.get_resolution_divider(motor_id)
-                range_degrees = (range_degrees / encoder_resolution) * resolution_divider * DXL_MULTI_TURN_RANGE_TICK
-                range_radians = math.radians(range_degrees)
-                encoder_resolution = DXL_MULTI_TURN_RANGE_TICK
-            except dynamixel_io.UnsupportedFeatureError: pass  # The servo is not MX motor
-        rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, motor_id), encoder_resolution)
-        rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, motor_id), range_degrees)
-        rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, motor_id), range_radians)
-        rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, motor_id), encoder_resolution / range_degrees)
-        rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
-        rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
-        rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
+        if ('encoder_resolution' in DXL_MODEL_TO_PARAMS[model_number]
+                and 'range_degrees' in DXL_MODEL_TO_PARAMS[model_number]):
+            encoder_resolution = DXL_MODEL_TO_PARAMS[model_number]['encoder_resolution']
+            range_degrees = DXL_MODEL_TO_PARAMS[model_number]['range_degrees']
+            range_radians = math.radians(range_degrees)
+            if angles['max'] == 4095 and angles['min'] == 4095:  # In multi-turn mode if the servo is MX motor
+                try:
+                    resolution_divider = self.dxl_io.get_resolution_divider(motor_id)
+                    range_degrees = (range_degrees / encoder_resolution) * resolution_divider * DXL_MULTI_TURN_RANGE_TICK
+                    range_radians = math.radians(range_degrees)
+                    encoder_resolution = DXL_MULTI_TURN_RANGE_TICK
+                except dynamixel_io.UnsupportedFeatureError: pass  # The servo is not MX motor
+            rospy.set_param('dynamixel/%s/%d/encoder_resolution' %(self.port_namespace, motor_id), encoder_resolution)
+            rospy.set_param('dynamixel/%s/%d/range_degrees' %(self.port_namespace, motor_id), range_degrees)
+            rospy.set_param('dynamixel/%s/%d/range_radians' %(self.port_namespace, motor_id), range_radians)
+            rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_degree' %(self.port_namespace, motor_id), encoder_resolution / range_degrees)
+            rospy.set_param('dynamixel/%s/%d/encoder_ticks_per_radian' %(self.port_namespace, motor_id), encoder_resolution / range_radians)
+            rospy.set_param('dynamixel/%s/%d/degrees_per_encoder_tick' %(self.port_namespace, motor_id), range_degrees / encoder_resolution)
+            rospy.set_param('dynamixel/%s/%d/radians_per_encoder_tick' %(self.port_namespace, motor_id), range_radians / encoder_resolution)
         
         # keep some parameters around for diagnostics
         self.motor_static_info[motor_id] = {}
