@@ -288,5 +288,8 @@ DXL_MODEL_TO_PARAMS = \
            'rpm_per_tick':       0.114,
            'features':           [DXL_MULTI_TURN_OFFSET_L, DXL_RESOLUTION_DIVIDER, DXL_CURRENT_L, DXL_TORQUE_CONTROL_MODE, DXL_GOAL_ACCELERATION]
          },
+    16416: {'name':              'DXMIO',
+            'features':          []
+         },
 }
 
