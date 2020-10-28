@@ -72,6 +72,10 @@ if __name__ == '__main__':
                       help='set servo motor minimum voltage limit')
     parser.add_option('--max-voltage-limit', type='int', metavar='MAX_VOLTAGE', dest='max_voltage_limit',
                       help='set servo motor maximum voltage limit')
+    parser.add_option('--multi-turn-offset', type='int', metavar='OFFSET', dest='multi_turn_offset',
+                      help='set servo motor multi-turn offset')
+    parser.add_option('--resolution-divider', type='int', metavar='DIVIDER', dest='resolution_divider',
+                      help='set servo motor resolution divider')
                       
     (options, args) = parser.parse_args(sys.argv)
     print options
@@ -138,6 +142,22 @@ if __name__ == '__main__':
                 if options.max_voltage_limit:
                     print 'Setting maximum voltage limit to %d' % options.max_voltage_limit
                     dxl_io.set_voltage_limit_max(motor_id, options.max_voltage_limit)
+                    
+                # check if multi-turn offset needs to be changed
+                if options.multi_turn_offset is not None:
+                    if options.multi_turn_offset < -24576 or options.multi_turn_offset > 24576:
+                        print 'Requested multi-turn offset is out of valid range (-24576 - 24576)'
+                    else:
+                        print 'Setting multi-turn offset to %d' % options.multi_turn_offset
+                        dxl_io.set_multi_turn_offset(motor_id, options.multi_turn_offset)
+                    
+                # check if resolution divider needs to be changed
+                if options.resolution_divider is not None:
+                    if options.resolution_divider < 1 or options.resolution_divider > 4:
+                        print 'Requested resolution divider is out of valid range (1 - 4)'
+                    else:
+                        print 'Setting resolution divider to %d' % options.resolution_divider
+                        dxl_io.set_resolution_divider(motor_id, options.resolution_divider)
                     
                 print 'done'
             else:
