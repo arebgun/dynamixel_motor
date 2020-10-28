@@ -172,9 +172,14 @@ class JointPositionController(JointController):
                 self.joint_state.motor_temps = [state.temperature]
                 self.joint_state.goal_pos = self.raw_to_rad(state.goal, self.initial_position_raw, self.flipped, self.RADIANS_PER_ENCODER_TICK)
                 self.joint_state.current_pos = self.raw_to_rad(state.position, self.initial_position_raw, self.flipped, self.RADIANS_PER_ENCODER_TICK)
-                self.joint_state.error = state.error * self.RADIANS_PER_ENCODER_TICK
-                self.joint_state.velocity = state.speed * self.VELOCITY_PER_TICK
-                self.joint_state.load = state.load
+                if self.flipped:
+                    self.joint_state.error = -state.error * self.RADIANS_PER_ENCODER_TICK
+                    self.joint_state.velocity = -state.speed * self.VELOCITY_PER_TICK
+                    self.joint_state.load = -state.load
+                else:
+                    self.joint_state.error = state.error * self.RADIANS_PER_ENCODER_TICK
+                    self.joint_state.velocity = state.speed * self.VELOCITY_PER_TICK
+                    self.joint_state.load = state.load
                 self.joint_state.is_moving = state.moving
                 self.joint_state.header.stamp = rospy.Time.from_sec(state.timestamp)
                 
