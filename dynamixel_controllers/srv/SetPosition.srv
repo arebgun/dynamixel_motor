@@ -1,0 +1,5 @@
+float64 position
+---
+bool goal_reached
+bool min_max_limit_reached
+
