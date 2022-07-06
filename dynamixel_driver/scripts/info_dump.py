@@ -58,7 +58,23 @@ def print_data(values):
         print '''\
     Motor %(id)d is connected:
         Freespin: True
+        Multi-Turn: False
         Model ------------------- %(model)s
+        Current Speed ----------- %(speed)d
+        Current Temperature ----- %(temperature)d%(degree_symbol)sC
+        Current Voltage --------- %(voltage).1fv
+        Current Load ------------ %(load)d
+        Moving ------------------ %(moving)s
+''' %values
+    elif values['multi_turn']:
+        print '''\
+    Motor %(id)d is connected:
+        Freespin: False
+        Multi-Turn: True
+        Model ------------------- %(model)s
+        Multi-Turn Offset ------- %(multi_turn_offset)d
+        Resolution Divider ------ %(resolution_divider)d
+        Current Position -------- %(position)d
         Current Speed ----------- %(speed)d
         Current Temperature ----- %(temperature)d%(degree_symbol)sC
         Current Voltage --------- %(voltage).1fv
@@ -69,6 +85,7 @@ def print_data(values):
         print '''\
     Motor %(id)d is connected:
         Freespin: False
+        Multi-Turn: False
         Model ------------------- %(model)s
         Min Angle --------------- %(min)d
         Max Angle --------------- %(max)d
@@ -127,8 +144,17 @@ if __name__ == '__main__':
                 print 'done'
                 if angles['max'] == 0 and angles['min'] == 0:
                     values['freespin'] = True
+                    values['multi_turn'] = False
                 else:
                     values['freespin'] = False
+                    if (DXL_MULTI_TURN_OFFSET_L in DXL_MODEL_TO_PARAMS[model]['features']) \
+                            and angles['max'] == 4095 and angles['min'] == 4095:
+                        values['multi_turn'] = True
+                        values['multi_turn_offset'] = dxl_io.get_multi_turn_offset(motor_id)
+                        values['resolution_divider'] = dxl_io.get_resolution_divider(motor_id)
+                    else:
+                        values['multi_turn'] = False
+
                 print_data(values)
             else:
                 print 'error'
