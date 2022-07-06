@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(dynamixel_controllers)
 
-find_package(catkin REQUIRED COMPONENTS message_generation)
+find_package(catkin REQUIRED COMPONENTS actionlib message_generation)
 
 add_service_files(
   FILES
@@ -16,9 +16,14 @@ add_service_files(
   TorqueEnable.srv
 )
 
+add_action_files(
+  DIRECTORY action
+  FILES CalibJoint.action
+)
+
 catkin_python_setup()
 
-generate_messages()
+generate_messages(DEPENDENCIES std_msgs actionlib_msgs)
 
 catkin_package(
   CATKIN_DEPENDS
