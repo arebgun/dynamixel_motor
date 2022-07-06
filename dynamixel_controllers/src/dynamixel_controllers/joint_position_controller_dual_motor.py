@@ -98,6 +98,9 @@ class JointPositionControllerDual(JointController):
         if self.compliance_punch is not None: self.set_compliance_punch(self.compliance_punch)
         if self.torque_limit is not None: self.set_torque_limit(self.torque_limit)
         
+        if self.ignored_errors is not None:
+            self.set_ignored_errors(self.ignored_errors)
+
         self.joint_max_speed = rospy.get_param(self.controller_namespace + '/joint_max_speed', self.MAX_VELOCITY)
         
         if self.joint_max_speed < self.MIN_VELOCITY: self.joint_max_speed = self.MIN_VELOCITY
@@ -174,6 +177,10 @@ class JointPositionControllerDual(JointController):
         mcv_master = (self.master_id, raw_torque_val)
         mcv_slave = (self.slave_id, raw_torque_val)
         self.dxl_io.set_multi_torque_limit([mcv_master, mcv_slave])
+
+    def set_ignored_errors(self, errs):
+        self.dxl_io.set_ignored_errors(self.master_id, errs)
+        self.dxl_io.set_ignored_errors(self.slave_id, errs)
 
     def process_motor_states(self, state_list):
         if self.running:
