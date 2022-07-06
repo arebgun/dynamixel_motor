@@ -1,6 +1,6 @@
 <package>
   <name>dynamixel_driver</name>
-  <version>0.4.0</version>
+  <version>0.4.1</version>
   <description>
     This package provides low level IO for Robotis Dynamixel servos.
     Fully supports and was tested with AX-12, AX-18, RX-24, RX-28,
