@@ -75,9 +75,9 @@ if __name__ == '__main__':
     try:
         dxl_io = dynamixel_io.DynamixelIO(port, baudrate)
     except dynamixel_io.SerialOpenError, soe:
-        print 'ERROR:', soe
+        print('ERROR:', soe)
     else:
-        print 'Turning torque %s for motor %d' % (torque_on, motor_id)
+        print('Turning torque %s for motor %d' % (torque_on, motor_id))
         if dxl_io.ping(motor_id):
             if torque_on.lower() == 'off':
                 torque_on = False
@@ -87,7 +87,7 @@ if __name__ == '__main__':
                 parser.print_help()
                 exit(1)
             dxl_io.set_torque_enabled(motor_id, torque_on)
-            print 'done'
+            print('done')
         else:
-            print 'ERROR: motor %d did not respond. Make sure to specify the correct baudrate.' % motor_id
+            print('ERROR: motor %d did not respond. Make sure to specify the correct baudrate.' % motor_id)
 
