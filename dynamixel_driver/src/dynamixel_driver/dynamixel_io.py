@@ -98,7 +98,7 @@ class DynamixelIO(object):
             if not data[0:2] == ['\xff', '\xff']: raise Exception('Wrong packet prefix %s' % data[0:2])
             data.extend(self.ser.read(ord(data[3])))
             data = array('B', ''.join(data)).tolist() # [int(b2a_hex(byte), 16) for byte in data]
-        except Exception, e:
+        except Exception as e:
             raise DroppedPacketError('Invalid response received from motor %d. %s' % (servo_id, e))
 
         # verify checksum
@@ -241,7 +241,7 @@ class DynamixelIO(object):
             try:
                 response = self.__read_response(servo_id)
                 response.append(timestamp)
-            except Exception, e:
+            except Exception as e:
                 response = []
 
         if response:
