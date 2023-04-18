@@ -55,7 +55,7 @@ def print_data(values):
     ''' Takes a dictionary with all the motor values and does a formatted print.
     '''
     if values['freespin']:
-        print '''\
+        print('''\
     Motor %(id)d is connected:
         Freespin: True
         Model ------------------- %(model)s
@@ -64,9 +64,9 @@ def print_data(values):
         Current Voltage --------- %(voltage).1fv
         Current Load ------------ %(load)d
         Moving ------------------ %(moving)s
-''' %values
+''' %values)
     else:
-        print '''\
+        print('''\
     Motor %(id)d is connected:
         Freespin: False
         Model ------------------- %(model)s
@@ -78,7 +78,7 @@ def print_data(values):
         Current Voltage --------- %(voltage).1fv
         Current Load ------------ %(load)d
         Moving ------------------ %(moving)s
-''' %values
+''' %values)
 
 if __name__ == '__main__':
     usage_msg = 'Usage: %prog [options] IDs'
@@ -104,13 +104,13 @@ if __name__ == '__main__':
     try:
         dxl_io = dynamixel_io.DynamixelIO(port, baudrate)
     except dynamixel_io.SerialOpenError, soe:
-        print 'ERROR:', soe
+        print('ERROR:', soe)
     else:
         responses = 0
-        print 'Pinging motors:'
+        print('Pinging motors:')
         for motor_id in motor_ids:
             motor_id = int(motor_id)
-            print '%d ...' % motor_id,
+            print('%d ...' % motor_id, end=' ')
             p = dxl_io.ping(motor_id)
             if p:
                 responses += 1
@@ -124,14 +124,14 @@ if __name__ == '__main__':
                 values['max'] = angles['max']
                 values['voltage'] = values['voltage']
                 values['moving'] = str(values['moving'])
-                print 'done'
+                print('done')
                 if angles['max'] == 0 and angles['min'] == 0:
                     values['freespin'] = True
                 else:
                     values['freespin'] = False
                 print_data(values)
             else:
-                print 'error'
+                print('error')
         if responses == 0:
-            print 'ERROR: None of the specified motors responded. Make sure to specify the correct baudrate.'
+            print('ERROR: None of the specified motors responded. Make sure to specify the correct baudrate.')
 

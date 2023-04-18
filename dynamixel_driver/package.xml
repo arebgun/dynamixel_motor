@@ -1,4 +1,4 @@
-<package>
+<package format="3">
   <name>dynamixel_driver</name>
   <version>0.4.1</version>
   <description>
@@ -22,9 +22,10 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <run_depend>rospy</run_depend>
-  <run_depend>diagnostic_msgs</run_depend>
-  <run_depend>python-serial</run_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend condition="$ROS_PYTHON_VERSION == 2">python-serial</exec_depend>
+  <exec_depend condition="$ROS_PYTHON_VERSION == 3">python3-serial</exec_depend>
 
   <export>
 
