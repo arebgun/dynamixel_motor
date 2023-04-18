@@ -48,7 +48,7 @@ from array import array
 from binascii import b2a_hex
 from threading import Lock
 
-from dynamixel_const import *
+from .dynamixel_const import *
 
 exception = None
 

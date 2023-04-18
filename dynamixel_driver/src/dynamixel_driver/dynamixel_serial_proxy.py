@@ -53,7 +53,7 @@ import roslib
 roslib.load_manifest('dynamixel_driver')
 
 import rospy
-import dynamixel_io
+from . import dynamixel_io
 from dynamixel_driver.dynamixel_const import *
 
 from diagnostic_msgs.msg import DiagnosticArray
