@@ -70,17 +70,17 @@ if __name__ == '__main__':
     
     try:
         dxl_io = dynamixel_io.DynamixelIO(port, baudrate)
-    except dynamixel_io.SerialOpenError, soe:
-        print 'ERROR:', soe
+    except dynamixel_io.SerialOpenError as soe:
+        print('ERROR:', soe)
     else:
-        print 'Changing motor id from %d to %d...' %(old_id, new_id),
+        print('Changing motor id from %d to %d...' %(old_id, new_id), end=' ')
         if dxl_io.ping(old_id):
             dxl_io.set_id(old_id, new_id)
-            print ' done'
-            print 'Verifying new id...' ,
+            print(' done')
+            print('Verifying new id...', end=' ')
             if dxl_io.ping(new_id):
-                print ' done'
+                print(' done')
             else:
-                print 'ERROR: The motor did not respond to a ping to its new id.'
+                print('ERROR: The motor did not respond to a ping to its new id.')
         else:
-            print 'ERROR: The specified motor did not respond to id %d. Make sure to specify the correct baudrate.' % old_id
+            print('ERROR: The specified motor did not respond to id %d. Make sure to specify the correct baudrate.' % old_id)

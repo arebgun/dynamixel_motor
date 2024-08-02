@@ -32,7 +32,6 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import division
 
 
 __author__ = 'Antons Rebguns'
@@ -166,7 +165,7 @@ class JointPositionController(JointController):
 
     def process_motor_states(self, state_list):
         if self.running:
-            state = filter(lambda state: state.id == self.motor_id, state_list.motor_states)
+            state = [state for state in state_list.motor_states if state.id == self.motor_id]
             if state:
                 state = state[0]
                 self.joint_state.motor_temps = [state.temperature]

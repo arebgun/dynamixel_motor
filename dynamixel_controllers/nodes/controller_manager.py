@@ -49,6 +49,8 @@ import sys
 
 import rospy
 
+from importlib import import_module
+
 from dynamixel_driver.dynamixel_serial_proxy import SerialProxy
 
 from diagnostic_msgs.msg import DiagnosticArray
@@ -78,7 +80,7 @@ class ControllerManager:
         manager_namespace = rospy.get_param('~namespace')
         serial_ports = rospy.get_param('~serial_ports')
         
-        for port_namespace,port_config in serial_ports.items():
+        for port_namespace,port_config in list(serial_ports.items()):
             port_name = port_config['port_name']
             baud_rate = port_config['baud_rate']
             readback_echo = port_config['readback_echo'] if 'readback_echo' in port_config else False
@@ -132,7 +134,7 @@ class ControllerManager:
         if self.diagnostics_rate > 0: Thread(target=self.diagnostics_processor).start()
 
     def on_shutdown(self):
-        for serial_proxy in self.serial_proxies.values():
+        for serial_proxy in list(self.serial_proxies.values()):
             serial_proxy.disconnect()
 
     def diagnostics_processor(self):
@@ -143,7 +145,7 @@ class ControllerManager:
             diag_msg.status = []
             diag_msg.header.stamp = rospy.Time.now()
             
-            for controller in self.controllers.values():
+            for controller in list(self.controllers.values()):
                 try:
                     joint_state = controller.joint_state
                     temps = joint_state.motor_temps
@@ -173,9 +175,9 @@ class ControllerManager:
         controllers_still_waiting = []
         
         for i,(controller_name,deps,kls) in enumerate(self.waiting_meta_controllers):
-            if not set(deps).issubset(self.controllers.keys()):
+            if not set(deps).issubset(list(self.controllers.keys())):
                 controllers_still_waiting.append(self.waiting_meta_controllers[i])
-                rospy.logwarn('[%s] not all dependencies started, still waiting for %s...' % (controller_name, str(list(set(deps).difference(self.controllers.keys())))))
+                rospy.logwarn('[%s] not all dependencies started, still waiting for %s...' % (controller_name, str(list(set(deps).difference(list(self.controllers.keys()))))))
             else:
                 dependencies = [self.controllers[dep_name] for dep_name in deps]
                 controller = kls(controller_name, dependencies)
@@ -200,20 +202,21 @@ class ControllerManager:
             return StartControllerResponse(False, 'Controller [%s] already started. If you want to restart it, call restart.' % controller_name)
             
         try:
-            if module_name not in sys.modules:
-                # import if module not previously imported
-                package_module = __import__(package_path, globals(), locals(), [module_name], -1)
-            else:
-                # reload module if previously imported
-                package_module = reload(sys.modules[package_path])
-            controller_module = getattr(package_module, module_name)
-        except ImportError, ie:
+            # if module_name not in sys.modules:
+            #     # import if module not previously imported
+            #     package_module = import_module(package_path)
+            # else:
+            #     # reload module if previously imported
+            #     package_module = importlib.reload(sys.modules[package_path])
+            # controller_module = getattr(package_module, module_name)
+            controller_module = import_module(package_path+'.'+module_name) # (the temporal modification) always import modules without reload
+        except ImportError as ie:
             self.start_controller_lock.release()
             return StartControllerResponse(False, 'Cannot find controller module. Unable to start controller %s\n%s' % (module_name, str(ie)))
-        except SyntaxError, se:
+        except SyntaxError as se:
             self.start_controller_lock.release()
             return StartControllerResponse(False, 'Syntax error in controller module. Unable to start controller %s\n%s' % (module_name, str(se)))
-        except Exception, e:
+        except Exception as e:
             self.start_controller_lock.release()
             return StartControllerResponse(False, 'Unknown error has occured. Unable to start controller %s\n%s' % (module_name, str(e)))
         
@@ -227,7 +230,7 @@ class ControllerManager:
             
         if port_name != 'meta' and (port_name not in self.serial_proxies):
             self.start_controller_lock.release()
-            return StartControllerResponse(False, 'Specified port [%s] not found, available ports are %s. Unable to start controller %s' % (port_name, str(self.serial_proxies.keys()), controller_name))
+            return StartControllerResponse(False, 'Specified port [%s] not found, available ports are %s. Unable to start controller %s' % (port_name, str(list(self.serial_proxies.keys())), controller_name))
             
         controller = kls(self.serial_proxies[port_name].dxl_io, controller_name, port_name)
         
